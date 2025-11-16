@@ -1,0 +1,42 @@
+# Data files (large, regeneratable)
+data/backtest_results/*.json
+data/backtest_results/runs/*/results.json
+data/raw/
+data/processed/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+*.egg-info/
+dist/
+build/
+
+# Jupyter
+.ipynb_checkpoints/
+*.ipynb
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Temporary files
+*.tmp
+*.log
+*.bak
+
+# Keep metadata and summaries (small, important)
+!data/backtest_results/runs/*/METADATA.json
+!data/backtest_results/runs/*/SUMMARY.txt
+!data/backtest_results/RESULTS_VERSIONING_SYSTEM.md
