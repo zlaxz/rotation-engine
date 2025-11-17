@@ -13,6 +13,52 @@
 
 **NO SHORTCUTS. EVER. PERIOD.**
 
+---
+
+## 🔴 BANNED: "Quick Tests" and "Validation Prototypes"
+
+**ABSOLUTE RULE: Every line of code is PRODUCTION code.**
+
+There is NO such thing as:
+- ❌ "Quick test to validate the logic"
+- ❌ "Simplified version to check if it works"
+- ❌ "Prototype to verify the approach"
+- ❌ "We can add proper [execution model / transaction costs / etc] later"
+
+**Why This Is Banned:**
+- Real capital at risk
+- "Quick tests" ALWAYS produce inflated results
+- Creates false confidence that leads to capital loss
+- Wastes days debugging wrong results
+
+**The Rule:**
+If you're writing code that:
+- Loads data
+- Calculates P&L
+- Simulates trades
+- Produces metrics
+
+Then that code MUST include:
+✅ Proper bid/ask pricing (ExecutionModel)
+✅ Transaction costs (commissions, spreads, SEC fees)
+✅ Realistic execution (no midpoint shortcuts)
+✅ Walk-forward compliance (no look-ahead)
+✅ All quality gates passed
+
+**No Exceptions. No "Just This Once".**
+
+**If I Catch Myself Thinking:**
+- "Let me just quickly test..."
+- "I'll add the proper execution later..."
+- "This is just to validate the approach..."
+
+🛑 **STOP. This is banned. Build it right or don't build it.**
+
+**Consequence:**
+If "quick test" code produces results, those results are INVALID and must be discarded. All work based on those results is invalid.
+
+---
+
 When presenting backtest results or analysis:
 - ❌ NEVER use pre-computed data with known bugs
 - ❌ NEVER calculate rough estimates and call them "backtest results"

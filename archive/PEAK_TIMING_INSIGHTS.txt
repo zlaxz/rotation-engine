@@ -1,0 +1,140 @@
+PROFILE 1 (LDG): PEAK TIMING ANALYSIS - EXECUTIVE SUMMARY
+========================================================
+
+DATASET: 140 trades analyzed
+- Profitable: 117 (83.6%)
+- Unprofitable: 23 (16.4%)
+
+KEY STATISTICS
+==============
+Mean peak day:       6.91 (Day 7)
+Median peak day:     7.00
+Std deviation:       5.00
+Range:               0-14 days
+
+CRITICAL DISCOVERIES
+====================
+
+1. PROFITABILITY TIMING (Very Fast Recovery)
+   - 45.3% of trades turn profitable on DAY 1
+   - 59% profitable by DAY 2
+   - 76% profitable by DAY 3
+   - Average time to profitability: 3.1 days
+   → Most trades recover from theta decay within 2 days
+
+2. PEAK TIMING (Much Slower Distribution)
+   - Mean: Day 6.9
+   - Median: Day 7.0
+   - Bimodal pattern detected:
+     * Cluster 1: Days 1-5 (30% of trades, median peak $130)
+     * Dead zone: Days 6-11 (only 30% of trades)
+     * Cluster 2: Days 12-14 (23% of trades, median peak $438)
+   → 35% larger gains in late cluster, but requires 2x+ holding time
+
+3. PROFIT REALIZATION SCHEDULE
+   Day 1: $52.80 median
+   Day 2: $84.80 median (+61% from Day 1)
+   Day 5: $124.30 median (+47% from Day 2)
+   Day 7: $140.80 median (only +13% from Day 5)
+   Day 9: $173.80 median (plateau zone)
+   → Profits cluster in first 3-5 days, then flatten
+
+4. DECAY RISK AFTER PEAK (Brutal)
+   +1 day:  -66.5% median loss from peak
+   +2 days: -87.5% median loss
+   +3 days: -125.6% median loss
+   +5 days: -154.5% median loss
+   → Holding past peak = rapid capital evaporation
+
+5. CAPTURE MILESTONES
+   25% of peaks caught by Day 2
+   50% of peaks caught by Day 7
+   75% of peaks caught by Day 12
+   90% of peaks caught by Day 14
+   → To get 50% of peaks requires 7-day hold (risky for gamma)
+
+EXIT STRATEGY RECOMMENDATION
+=============================
+
+THREE-TIER APPROACH:
+
+Tier 1: Day 3 Harvest (Recommended Primary)
+- Trigger: Exit any trade +30% or higher
+- Captures: 36% of all trades near peak
+- Execution: Quick gamma snaps with minimal theta bleed
+- Median profit: $73
+- Frequency: ~50 trades/140 = high turnover
+
+Tier 2: Day 7 Window (Secondary Holds)
+- Trigger: Re-evaluate Greeks, vol regime, trend
+- Captures: Additional 30% of trades
+- Execution: Hold early-entry losers for recovery opportunity
+- Median profit by Day 7: $141
+- Decision point: Is vol regime supporting extension to Day 10-14?
+
+Tier 3: Hard Stop at Day 14
+- Trigger: Force exit all remaining positions
+- Reason: Theta decay accelerates post-Day 9 (bleed = losses)
+- Prevents: Extended duration risk, pin risk, assignment
+
+BUSINESS LOGIC
+==============
+
+Why this works for LDG:
+1. Most (59%) turnable profitable by Day 2 → take the wins
+2. 30-35% bimodal split → acknowledge two populations
+3. Peak distribution means 50% need >7 days → too long for gamma
+4. Decay post-peak is exponential → exit urgency is real
+5. High-frequency approach = compound edge (more rotations)
+
+ACTIONABLE INSIGHTS FOR CODE
+=============================
+
+Entry Rules (Already Done)
+- Detect regime + profile match
+- Execute straddle/strangle structure
+- Mark entry Greeks and vol level
+
+Exit Rules (Implement This):
+1. Track daily P&L from entry
+2. Day 1-3:
+   - If profit > 30% of max risk: EXIT (Tier 1)
+   - Else: hold for day 3
+3. Day 3-7:
+   - Evaluate vol regime: expanding vs. compressing?
+   - If contracting + no vol catalysts: EXIT (Tier 2)
+   - If strong vol: hold to Day 7 checkpoint
+4. Day 7-14:
+   - Hard decline in profitability observed after Day 9
+   - Force exit all by Day 14 (no exceptions)
+
+RISK MANAGEMENT
+===============
+
+Position Sizing:
+- Assume 30% of positions exit Days 1-3 (quick wins)
+- Assume 40% exit Days 4-7 (secondary recovery)
+- Assume 30% hit Day 14 limit (force close)
+
+Daily Loss Limits:
+- Individual trade: Hard exit if loss > 50% of max risk
+- Portfolio: Theta bleed accelerates after Day 9, monitor daily
+
+Expected Outcomes (Based on 140 trades):
+- ~42 trades peak Days 1-5 (median $130) → Exit $100 average
+- ~26 trades peak Days 6-9 (median $289) → Exit $240 average
+- ~49 trades peak Days 10-14 (median $438) → Exit $300 average
+- ~23 never profitable (median -$17) → Exit $0 (loss)
+
+Files Generated
+===============
+/Users/zstoc/rotation-engine/data/backtest_results/current/PROFILE_1_LDG_PEAK_TIMING_ANALYSIS.md
+- Full detailed analysis with charts and tables
+
+NEXT STEPS
+==========
+1. Backtest exit timing impact (compare 3-day vs 7-day vs 14-day)
+2. Analyze regime dependency (vol expanding vs. compressing impact)
+3. Implement dynamic exit based on Greeks delta/theta ratio
+4. Monitor: Do late-cluster trades (Days 10-14) require specific entry filters?
+5. Optimize: Can entry regime selection reduce the 16.4% unprofitable rate?

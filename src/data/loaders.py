@@ -22,6 +22,7 @@ warnings.filterwarnings('ignore')
 
 DEFAULT_POLYGON_ROOT = "/Volumes/VelocityData/polygon_downloads/us_options_opra/day_aggs_v1"
 
+DEFAULT_POLYGON_MINUTE_ROOT = "/Volumes/VelocityData/polygon_downloads/us_options_opra/minute_aggs_v1"
 
 DEFAULT_STOCK_ROOT = "/Volumes/VelocityData/velocity_om/parquet/stock/SPY"
 
@@ -32,6 +33,7 @@ class OptionsDataLoader:
     def __init__(
         self,
         data_root: Optional[str] = None,
+        minute_data_root: Optional[str] = None,
         stock_data_root: Optional[str] = None
     ):
         resolved_root = data_root or os.environ.get("POLYGON_DATA_ROOT", DEFAULT_POLYGON_ROOT)
@@ -41,6 +43,11 @@ class OptionsDataLoader:
                 f"Polygon data root not found at {self.data_root}. "
                 "Mount the dataset or set POLYGON_DATA_ROOT to the correct path."
             )
+
+        # Minute bar data root (optional - only needed for intraday analysis)
+        minute_root_resolved = minute_data_root or os.environ.get("POLYGON_MINUTE_ROOT", DEFAULT_POLYGON_MINUTE_ROOT)
+        self.minute_data_root = Path(minute_root_resolved).expanduser()
+        self.has_minute_data = self.minute_data_root.exists()
 
         stock_root_resolved = stock_data_root or os.environ.get("SPY_STOCK_DATA_ROOT", DEFAULT_STOCK_ROOT)
         self.stock_data_root = Path(stock_root_resolved).expanduser()

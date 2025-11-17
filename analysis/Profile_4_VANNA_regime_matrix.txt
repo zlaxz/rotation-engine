@@ -1,0 +1,155 @@
+╔══════════════════════════════════════════════════════════════════════════════════════════════════╗
+║                  PROFILE 4 VANNA: REGIME PERFORMANCE MATRIX                                     ║
+║                        (151 Total Trades, 2020-2025)                                            ║
+╚══════════════════════════════════════════════════════════════════════════════════════════════════╝
+
+┌──────────────────────────────────────────────────────────────────────────────────────────────────┐
+│ REGIME SUMMARY (All Years)                                                                      │
+├─────────────────────────────┬──────────┬─────────┬──────────────┬──────────────┬────────────────┤
+│ Regime                      │ Count    │ Win %   │ Realized PnL │ Per Trade    │ Rating         │
+├─────────────────────────────┼──────────┼─────────┼──────────────┼──────────────┼────────────────┤
+│ Event/Catalyst              │ 108      │ 63.0%   │ +$17,609     │ +$163        │ ✓ PRIMARY      │
+│ Trend Up (vol compression)  │ 39       │ 48.7%   │ -$1,993      │ -$51         │ ⚠ CAUTION      │
+│ Choppy / Mean-Reverting     │ 4        │ 25.0%   │ -$2,110      │ -$527        │ ✗ AVOID        │
+│ Vol Compression / Pinned    │ 0        │ —       │ —            │ —            │ — NO DATA      │
+│ Vol Expansion               │ 0        │ —       │ —            │ —            │ — NO DATA      │
+└─────────────────────────────┴──────────┴─────────┴──────────────┴──────────────┴────────────────┘
+
+┌──────────────────────────────────────────────────────────────────────────────────────────────────┐
+│ YEAR-BY-YEAR BREAKDOWN (Event/Catalyst = Primary Regime)                                        │
+├────────┬──────────┬─────────┬────────────────┬──────────────────────────────────────────────────┤
+│ Year   │ E/C      │ Win %   │ PnL            │ Critical Observations                            │
+├────────┼──────────┼─────────┼────────────────┼──────────────────────────────────────────────────┤
+│ 2020   │ 12/14    │ 86%     │ +$4,158        │ Post-COVID bounce, optimal conditions            │
+│ 2021   │ 14/26    │ 54%     │ +$2,058        │ Moderate performance, mixed vol regimes          │
+│ 2022   │ 1/4      │ 25%     │ -$328          │ ◆ CRISIS: Fed + bear = vol expansion death       │
+│ 2023   │ 11/20    │ 55%     │ +$2,444        │ Recovery, post-crisis normalization              │
+│ 2024   │ 21/31    │ 68%     │ +$3,988        │ Strong, similar to 2020 conditions               │
+│ 2025   │ 9/13     │ 69%     │ +$5,289        │ YTD strong momentum                              │
+└────────┴──────────┴─────────┴────────────────┴──────────────────────────────────────────────────┘
+
+┌──────────────────────────────────────────────────────────────────────────────────────────────────┐
+│ WINNER vs LOSER PROFILES (Event/Catalyst Regime)                                               │
+├────────────────────────────────────────────────────────────────────────────────────────────────┤
+│                              WINNERS (68/108)                   LOSERS (40/108)                 │
+├────────────────────────────────────────────────────────────────────────────────────────────────┤
+│ Exit Day:                   13.8 days                           13.9 days                      │
+│ Exit Delta:                 0.687 (solidly ITM)                 0.440 (barely moved)           │
+│ Exit Vega:                  55.6                                60.2                           │
+│ Spot Movement:              +2.55%                              +0.88% (stalled)               │
+│ Vol Change:                 -2.31% (compression)                -0.96% (minimal)               │
+│ Max Drawdown:               -41.2%                              -830% (CATASTROPHIC)           │
+│ Final Profit:               $200-300 avg                        $-200-500 avg                  │
+│ Exit Trigger:               Time decay + intrinsic value        Theta domination               │
+└────────────────────────────────────────────────────────────────────────────────────────────────┘
+
+┌──────────────────────────────────────────────────────────────────────────────────────────────────┐
+│ TREND UP (VOL COMPRESSION) - THE RISK ZONE - Winners vs Losers                                 │
+├────────────────────────────────────────────────────────────────────────────────────────────────┤
+│                              WINNERS (19/39)                   LOSERS (20/39)                  │
+├────────────────────────────────────────────────────────────────────────────────────────────────┤
+│ Exit Day:                   13.8 days                           14.0 days                      │
+│ Exit Delta:                 0.686 (ITM)                         0.362 (barely ITM/OTM)         │
+│ Spot Movement:              +2.70%                              +0.14% (TREND STALLED!)        │
+│ Vol Change:                 -2.48% (continued compression)      +2.64% (VOL EXPANSION!)        │
+│ Max Drawdown:               -38.8%                              -336% (WORST SCENARIO)         │
+│ Death Scenario:             Uptrend looks established → vol spike during trend → calls crushed  │
+│ Action Required:            EXIT IMMEDIATELY if vol rises                                       │
+└────────────────────────────────────────────────────────────────────────────────────────────────┘
+
+┌──────────────────────────────────────────────────────────────────────────────────────────────────┐
+│ THE MISLABEL: NOT "VANNA", ACTUALLY "DIRECTIONAL GAMMA"                                         │
+├────────────────────────────────────────────────────────────────────────────────────────────────┤
+│                                                                                                  │
+│  EXPECTED (if VANNA):           ACTUAL (Directional Gamma):                                     │
+│  ├─ Profit from vol rise          ├─ Winners have VOL FALLS (-2.31% to -2.48%)                 │
+│  ├─ Vega exposure (long vol)       ├─ Vega almost IRRELEVANT to profit                         │
+│  └─ Vol correlation trading        └─ PROFIT from spot movement: +2.55% to +2.70%             │
+│                                                                                                  │
+│  PROFIT DRIVER: Spot moves up → Delta increases (0.55 → 0.687) → Gamma P&L                    │
+│  TIME DECAY:    Works FOR you: helps collect intrinsic value as delta rises                    │
+│  RISK:          If spot doesn't move enough: theta decay kills unmoving position               │
+│                                                                                                  │
+└────────────────────────────────────────────────────────────────────────────────────────────────┘
+
+┌──────────────────────────────────────────────────────────────────────────────────────────────────┐
+│ EXIT STRATEGY FRAMEWORK (Three Layers)                                                          │
+├────────────────────────────────────────────────────────────────────────────────────────────────┤
+│                                                                                                  │
+│ LAYER 1: PROFIT TAKING (Most Important)                                                        │
+│ ├─ IF: Peak profit > 50% entry cost                                                            │
+│ │   THEN: Exit 50% immediately (lock profits)                                                  │
+│ ├─ IF: Days held > 10 AND spot up                                                              │
+│ │   THEN: Trail stop at -20% from peak                                                         │
+│ └─ IF: Days held > 10 AND no spot move                                                         │
+│     THEN: Exit all (theta dominates)                                                            │
+│                                                                                                  │
+│ LAYER 2: VOL REGIME SHIFT (Most Dangerous)                                                     │
+│ ├─ IF: RV5 > 1.5x entry RV5                                                                   │
+│ │   THEN: Exit all (vol spike = vega lost)                                                     │
+│ ├─ IF: Slope flat AND spot stalled < 0.5% in 5 days                                            │
+│ │   THEN: Exit all (gamma profit unlikely)                                                     │
+│ └─ FOR TREND UP: IF vol rises at ANY point                                                     │
+│     THEN: Exit IMMEDIATELY (fatal)                                                              │
+│                                                                                                  │
+│ LAYER 3: TIME DECAY                                                                             │
+│ ├─ IF: Days held > 14 AND not at peak                                                          │
+│ │   THEN: Exit (theta accelerates)                                                             │
+│ └─ IF: DTE < 38                                                                                │
+│     THEN: Exit (pin risk + gamma explosion)                                                     │
+│                                                                                                  │
+└────────────────────────────────────────────────────────────────────────────────────────────────┘
+
+┌──────────────────────────────────────────────────────────────────────────────────────────────────┐
+│ REGIME-SPECIFIC EXIT RULES                                                                      │
+├────────────────────────────────────────────────────────────────────────────────────────────────┤
+│                                                                                                  │
+│  EVENT/CATALYST (✓ Primary Trade)                                                              │
+│  ├─ Stop Loss:    -50% entry cost                                                              │
+│  ├─ Time Exit:    8-14 days                                                                    │
+│  ├─ Profit Exit:  50% when peak > 50% cost                                                     │
+│  └─ Position:     Full size                                                                    │
+│                                                                                                  │
+│  TREND UP (⚠ Use Caution)                                                                      │
+│  ├─ Stop Loss:    -30% entry cost (TIGHTER)                                                    │
+│  ├─ Vol Exit:     IMMEDIATELY if RV20 rises                                                    │
+│  ├─ Spot Gate:    Needs > 1.5% move in first 5 days to hold                                    │
+│  └─ Position:     50% of Event/Catalyst size                                                   │
+│                                                                                                  │
+│  CHOPPY (✗ Don't Trade)                                                                        │
+│  ├─ Entry Filter: Skip when RV20 is 0.25-0.35 and slope near zero                             │
+│  └─ Reason:       Theta decay kills unmoving positions                                          │
+│                                                                                                  │
+└────────────────────────────────────────────────────────────────────────────────────────────────┘
+
+┌──────────────────────────────────────────────────────────────────────────────────────────────────┐
+│ 2022 CRISIS GUARDRAILS (Prevent 87% Win Rate Drop)                                             │
+├────────────────────────────────────────────────────────────────────────────────────────────────┤
+│                                                                                                  │
+│ 2020: 70.8% win rate vs 2022: 13.3% = -57.5% COLLAPSE                                         │
+│ Lost: $7,841 (erased 3 years of profits)                                                        │
+│                                                                                                  │
+│ Root Cause: Bear market + vol expansion during "events"                                         │
+│                                                                                                  │
+│ PREVENTION CHECKLIST:                                                                          │
+│ ├─ ✓ Skip Event/Catalyst if RV20 > 0.35 (vol already high)                                    │
+│ ├─ ✓ Avoid trading after major NEGATIVE events (earnings misses, macro data)                   │
+│ ├─ ✓ Reduce position size if yield curve inverted OR DXY strong                               │
+│ ├─ ✓ Tighten stops in bear market regimes (-30% vs -50%)                                       │
+│ └─ ✓ Skip Trend Up entries if rates rising + bear market signals                               │
+│                                                                                                  │
+└────────────────────────────────────────────────────────────────────────────────────────────────┘
+
+┌──────────────────────────────────────────────────────────────────────────────────────────────────┐
+│ CAPITAL ALLOCATION RECOMMENDATION                                                               │
+├────────────────────────────────────────────────────────────────────────────────────────────────┤
+│                                                                                                  │
+│  Event/Catalyst Regime:     70% of capital (63% win, +$163/trade, proven edge)                 │
+│  Trend Up Regime:           20% of capital (48.7% win, -$51/trade, high risk)                  │
+│  Research/Development:      10% of capital (test new profiles, regime filters)                 │
+│                                                                                                  │
+│  DO NOT: Trade Choppy regimes (25% win = random walk)                                          │
+│  DO NOT: Enter Event/Catalyst in 2022-like environments without guardrails                     │
+│                                                                                                  │
+└────────────────────────────────────────────────────────────────────────────────────────────────┘
+

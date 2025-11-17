@@ -1,0 +1,74 @@
+ROTATION ENGINE - QUANTITATIVE AUDIT SUMMARY
+=============================================
+
+CRITICAL FINDINGS: 3 Bugs Found That Invalidate Backtest Results
+
+BUG-001: DTE CALCULATION BROKEN FOR MULTI-LEG POSITIONS
+- Location: src/trading/simulator.py:132
+- Problem: Uses static entry DTE minus calendar days (wrong for multi-leg)
+- Impact: Diagonal spreads and backspreads don't roll at correct times
+- Severity: CRITICAL - Position state tracking is broken
+- Example: 60 DTE long call + 7 DTE short call shows 21.5 DTE average
+          But short call expires in 7 days max, could be already expired!
+- Fix: Calculate current DTE from leg.expiry dates instead of stored DTE
+- Time to fix: 1-2 hours
+
+BUG-002: MULTI-LEG POSITIONS LACK PER-LEG STATE TRACKING
+- Location: src/trading/trade.py, src/trading/simulator.py
+- Problem: Trade object has single is_open flag, can't track individual leg status
+- Impact: Can't roll individual legs (short leg when <3 DTE, keep long leg)
+- Severity: CRITICAL - Rolling doesn't work for complex strategies
+- Example: Diagonal spread should roll short leg at 3 DTE, keep long leg open
+          Current code would close ENTIRE position instead
+- Fix: Add per-leg state tracking and rolling logic
+- Time to fix: 4-6 hours
+
+BUG-003: ALLOCATION WEIGHTS DON'T SUM TO 1.0 AFTER VIX SCALING
+- Location: src/backtest/rotation.py:220-222
+- Problem: Weights normalized to 1.0, then scaled by 0.5 in high vol, never re-normalized
+- Impact: Portfolio allocation only 50% of intended when RV20 > 30%
+- Severity: CRITICAL - Returns understated, Sharpe ratio wrong
+- Example: After all constraints: {P1: 0.40, P2: 0.40, P3: 0.20} sum=1.0
+          After VIX scale (0.5): {P1: 0.20, P2: 0.20, P3: 0.10} sum=0.50
+          Missing 50% of allocation!
+- Fix: Re-normalize weights after VIX scaling
+- Time to fix: 30 minutes
+
+HIGH SEVERITY: 2 Additional Issues
+
+BUG-004: DELTA HEDGING NOT CALCULATED (PLACEHOLDER COST)
+- Location: src/trading/simulator.py:328-350
+- Problem: Fixed $27.50/day hedge cost regardless of actual delta
+- Impact: Hedge cost over/understated
+- Status: Acceptable for simulator (transparent, cost is disclosed)
+
+BUG-005: VIX PROXY UNIT INCONSISTENCY
+- Location: src/trading/execution.py:238 vs src/profiles/features.py:83-96
+- Problem: IV proxy calculation uses inconsistent annualization
+- Impact: Low (likely code works, documentation is confusing)
+
+IMPACT SUMMARY:
+- All backtests with multi-leg strategies are INVALID (Profiles 1, 4, 5, 6)
+- All backtests with RV20 > 30% are INVALID (allocation wrong)
+- All rolling positions have WRONG exit timing
+- Results cannot be trusted for capital deployment
+
+DEPLOYMENT DECISION: DO NOT DEPLOY
+Fix all 3 critical bugs before running any backtests.
+
+FILES CONTAINING BUGS:
+/Users/zstoc/rotation-engine/src/trading/simulator.py - Lines 132, 328-350
+/Users/zstoc/rotation-engine/src/trading/trade.py - No per-leg state
+/Users/zstoc/rotation-engine/src/backtest/rotation.py - Lines 220-222
+
+DETAILED REPORT:
+See QUANTITATIVE_AUDIT_REPORT.md for complete analysis with code examples,
+manual verifications, and fix implementations.
+
+NEXT STEPS:
+1. Review the 3 critical bugs in detail
+2. Implement fixes (total effort: ~6-8 hours)
+3. Add unit tests for each fix
+4. Re-run all backtests
+5. Compare results before/after
+6. Deploy with confidence

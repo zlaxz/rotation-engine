@@ -21,16 +21,23 @@ if TYPE_CHECKING:
 
 
 DEFAULT_POLYGON_ROOT = "/Volumes/VelocityData/polygon_downloads/us_options_opra/day_aggs_v1"
+DEFAULT_POLYGON_MINUTE_ROOT = "/Volumes/VelocityData/polygon_downloads/us_options_opra/minute_aggs_v1"
 
 
 class PolygonOptionsLoader:
     """
     Load Polygon options data with efficient lookup by (date, strike, expiry, type).
 
+    Supports both daily bars and minute bars for intraday analysis.
     Caches data by date to avoid repeated disk reads.
     """
 
-    def __init__(self, data_root: Optional[str] = None, execution_model: Optional["ExecutionModel"] = None):
+    def __init__(
+        self,
+        data_root: Optional[str] = None,
+        minute_data_root: Optional[str] = None,
+        execution_model: Optional["ExecutionModel"] = None
+    ):
         resolved_root = data_root or os.environ.get("POLYGON_DATA_ROOT", DEFAULT_POLYGON_ROOT)
         self.data_root = Path(resolved_root).expanduser()
         if not self.data_root.exists():
@@ -38,7 +45,15 @@ class PolygonOptionsLoader:
                 f"Polygon data root not found at {self.data_root}. "
                 "Mount the dataset or set POLYGON_DATA_ROOT to the correct path."
             )
+
+        # Minute bar data root (for intraday analysis)
+        minute_root_resolved = minute_data_root or os.environ.get("POLYGON_MINUTE_ROOT", DEFAULT_POLYGON_MINUTE_ROOT)
+        self.minute_data_root = Path(minute_root_resolved).expanduser()
+        self.has_minute_data = self.minute_data_root.exists()
+
         self._date_cache: Dict[date, pd.DataFrame] = {}
+        self._minute_cache: Dict[date, pd.DataFrame] = {}
+
         # Execution model for realistic spread calculation (lazy import)
         if execution_model is None:
             from src.trading.execution import ExecutionModel
@@ -428,6 +443,145 @@ class PolygonOptionsLoader:
 
         return df
 
+    def load_minute_bars(
+        self,
+        trade_date: date,
+        strike: float,
+        expiry: date,
+        option_type: str
+    ) -> pd.DataFrame:
+        """
+        Load minute bars for a specific option on a specific date.
+
+        Args:
+            trade_date: Trading date
+            strike: Strike price
+            expiry: Expiry date
+            option_type: 'call' or 'put'
+
+        Returns:
+            DataFrame with columns: timestamp, open, high, low, close, volume
+            Empty DataFrame if no data available
+        """
+        if not self.has_minute_data:
+            return pd.DataFrame()
+
+        # Load all minute bars for this date (cached)
+        all_minute_bars = self._load_minute_bars_raw(trade_date)
+
+        if all_minute_bars.empty:
+            return pd.DataFrame()
+
+        # Filter to this specific option
+        mask = (
+            (all_minute_bars['strike'] == strike) &
+            (all_minute_bars['expiry'] == expiry) &
+            (all_minute_bars['option_type'] == option_type.lower())
+        )
+
+        option_bars = all_minute_bars[mask].copy()
+
+        if option_bars.empty:
+            return pd.DataFrame()
+
+        # Convert window_start (nanoseconds) to datetime
+        option_bars['timestamp'] = pd.to_datetime(option_bars['window_start'], unit='ns')
+
+        # Select and order columns
+        result = option_bars[['timestamp', 'open', 'high', 'low', 'close', 'volume']].copy()
+        result = result.sort_values('timestamp').reset_index(drop=True)
+
+        return result
+
+    def _load_minute_bars_raw(self, trade_date: date) -> pd.DataFrame:
+        """
+        Load raw minute bars for all options on a specific date.
+
+        Returns DataFrame with parsed option info + OHLC minute data.
+        Cached to avoid repeated disk reads.
+        """
+        # Check cache
+        if trade_date in self._minute_cache:
+            return self._minute_cache[trade_date].copy()
+
+        year = trade_date.year
+        month = f"{trade_date.month:02d}"
+        day = f"{trade_date.day:02d}"
+
+        file_path = self.minute_data_root / str(year) / month / f"{year}-{month}-{day}.csv.gz"
+
+        if not file_path.exists():
+            self._minute_cache[trade_date] = pd.DataFrame()
+            return pd.DataFrame()
+
+        # Read compressed CSV
+        try:
+            with gzip.open(file_path, 'rt') as f:
+                df = pd.read_csv(f)
+        except Exception as e:
+            print(f"Error loading {file_path}: {e}")
+            self._minute_cache[trade_date] = pd.DataFrame()
+            return pd.DataFrame()
+
+        # Parse tickers
+        parsed = df['ticker'].apply(self._parse_option_ticker)
+
+        # Filter valid parsed tickers (SPY options only)
+        valid_mask = parsed.notna()
+
+        if not valid_mask.any():
+            self._minute_cache[trade_date] = pd.DataFrame()
+            return pd.DataFrame()
+
+        parsed_series = parsed[valid_mask].reset_index(drop=True)
+        df = df[valid_mask].reset_index(drop=True)
+
+        # Convert parsed dicts to DataFrame
+        parsed_df = pd.DataFrame(parsed_series.tolist())
+
+        # Merge with price data
+        result = pd.concat([df, parsed_df], axis=1)
+        result['date'] = trade_date
+
+        # Cache and return
+        self._minute_cache[trade_date] = result
+        return result.copy()
+
+    def resample_to_15min(self, minute_bars: pd.DataFrame) -> pd.DataFrame:
+        """
+        Resample minute bars to 15-minute bars.
+
+        Args:
+            minute_bars: DataFrame with timestamp, open, high, low, close, volume
+
+        Returns:
+            DataFrame with 15-minute OHLC bars
+        """
+        if minute_bars.empty:
+            return pd.DataFrame()
+
+        # Set timestamp as index
+        df = minute_bars.set_index('timestamp')
+
+        # Resample to 15-minute bars
+        # OHLC logic: first=open, max=high, min=low, last=close, sum=volume
+        resampled = df.resample('15T').agg({
+            'open': 'first',
+            'high': 'max',
+            'low': 'min',
+            'close': 'last',
+            'volume': 'sum'
+        })
+
+        # Remove bars with no data (NaN close)
+        resampled = resampled.dropna(subset=['close'])
+
+        # Reset index to get timestamp as column
+        resampled = resampled.reset_index()
+
+        return resampled
+
     def clear_cache(self):
         """Clear the date cache."""
         self._date_cache.clear()
+        self._minute_cache.clear()

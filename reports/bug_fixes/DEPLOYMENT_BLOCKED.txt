@@ -1,0 +1,129 @@
+================================================================================
+                    DEPLOYMENT BLOCKED - CRITICAL BUGS FOUND
+================================================================================
+
+Project: Rotation Engine
+Date: 2025-11-13
+Status: FAILED AUDIT - DO NOT DEPLOY
+
+================================================================================
+CRITICAL FINDINGS: 3 BUGS THAT INVALIDATE BACKTEST RESULTS
+================================================================================
+
+All three bugs must be fixed before any trading occurs.
+
+1. BUG-001: DTE Calculation Broken for Multi-Leg Positions
+   File: src/trading/simulator.py:132
+   Severity: CRITICAL
+   Impact: Rolling doesn't work, positions held past expiration
+   Evidence: Diagonal spread shows 21.5 DTE average when short leg already expired
+
+2. BUG-002: Multi-Leg Positions Lack Per-Leg State Tracking
+   File: src/trading/trade.py, src/trading/simulator.py
+   Severity: CRITICAL
+   Impact: Can't roll individual legs, must close entire position
+   Evidence: Single is_open flag for entire multi-leg position
+
+3. BUG-003: Allocation Weights Don't Sum to 1.0 After VIX Scaling
+   File: src/backtest/rotation.py:220-222
+   Severity: CRITICAL
+   Impact: Portfolio only 50% allocated when RV20 > 30%
+   Evidence: Weights scaled by 0.5 but never re-normalized
+
+================================================================================
+AFFECTED STRATEGIES
+================================================================================
+
+These strategies are INVALID until bugs are fixed:
+
+Multi-Leg Strategies (affected by BUG-001, BUG-002):
+- Profile 1: Long-Dated Gamma Efficiency (straddles)
+- Profile 4: Vanna Convexity (call diagonals)
+- Profile 5: Skew Convexity (backspreads)
+- Profile 6: Vol-of-Vol Convexity (multi-leg)
+
+High Volatility Scenarios (affected by BUG-003):
+- ALL strategies when RV20 > 30% (frequent in real markets)
+
+================================================================================
+DOCUMENTATION FILES
+================================================================================
+
+Read these for complete audit details:
+
+1. AUDIT_SUMMARY.txt
+   Quick summary of 3 critical bugs and impact
+
+2. QUANTITATIVE_AUDIT_REPORT.md
+   Complete audit with:
+   - Detailed bug descriptions
+   - Code examples and line numbers
+   - Manual verification examples
+   - Root cause analysis
+   - Fix recommendations
+   - Testing checklist
+
+3. FIXES_REQUIRED.md
+   Detailed fix implementations with:
+   - Current code
+   - Replacement code
+   - Why it works
+   - Test cases
+   - Implementation order
+
+4. BUG_VERIFICATION.py
+   Python script that demonstrates all 3 bugs
+   Run to see bugs in action
+
+================================================================================
+ESTIMATED REMEDIATION
+================================================================================
+
+Time to fix all 3 bugs: 6-8 hours
+- FIX-001 (DTE calculation): 1-2 hours
+- FIX-002 (Per-leg state): 4-6 hours
+- FIX-003 (Weight normalization): 30 minutes
+
+Time to test and validate: 4-6 hours
+- Unit tests for each fix
+- Integration tests
+- Backtest comparison (before/after)
+- Manual P&L verification
+
+Total timeline: 1-2 days
+
+================================================================================
+NEXT STEPS
+================================================================================
+
+1. Review QUANTITATIVE_AUDIT_REPORT.md (20 minutes)
+2. Review FIXES_REQUIRED.md (30 minutes)
+3. Run BUG_VERIFICATION.py to see bugs (5 minutes)
+4. Implement FIX-001 (DTE calculation) (1-2 hours)
+5. Implement FIX-002 (Per-leg state tracking) (4-6 hours)
+6. Implement FIX-003 (Weight normalization) (30 minutes)
+7. Add unit tests (2-3 hours)
+8. Run full backtest suite (1-2 hours)
+9. Compare results before/after (1 hour)
+10. Document impact and get approval (1 hour)
+
+================================================================================
+DEPLOYMENT DECISION
+================================================================================
+
+Current Status: BLOCKED ✗
+
+These bugs are not theoretical. They cause real money to be lost:
+- Rolling doesn't work (hold expired positions)
+- P&L is wrong (includes expired legs at zero value)
+- Allocation is wrong (50% underallocated in high vol)
+
+Do not proceed with any live trading until fixed.
+
+After fixes: Need revalidation before deployment approval.
+
+================================================================================
+
+For questions, see the detailed audit report:
+/Users/zstoc/rotation-engine/QUANTITATIVE_AUDIT_REPORT.md
+

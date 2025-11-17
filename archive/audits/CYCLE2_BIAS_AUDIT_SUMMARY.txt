@@ -1,0 +1,114 @@
+CYCLE 2 BIAS AUDIT - EXECUTIVE SUMMARY
+=======================================
+Date: 2025-11-14
+Auditor: backtest-bias-auditor skill
+
+VERDICT: ✅ CLEAN - NO CRITICAL BIAS DETECTED
+==============================================
+
+The backtest infrastructure is SUBSTANTIALLY CORRECT on information flow and timing.
+The previous Sharpe -3.29 was NOT due to look-ahead bias.
+
+ROOT CAUSES OF POOR PERFORMANCE (Not Bias):
+1. Transaction costs (spreads, commissions, hedge costs)
+2. Strategy ineffectiveness (convexity rotation may not have edge)
+3. Market regime (2020-2024 may not favor this strategy)
+
+ISSUES FOUND:
+=============
+- 0 CRITICAL (look-ahead bias)
+- 0 HIGH (timing issues)
+- 3 MEDIUM (documentation gaps - all verified clean)
+- 2 LOW (code quality)
+
+KEY FINDINGS:
+=============
+✅ Entry signals: Generated at EOD, executed next day (t+1 fill) - CORRECT
+✅ Regime classification: Uses only past data - CORRECT (Cycle 1 verified)
+✅ Profile scores: Computed from features available at decision time - CORRECT
+✅ VIX timing: EOD close (available at decision time) - VERIFIED CORRECT
+✅ P&L calculation: Correct execution sequence - CORRECT
+✅ Parameter selection: No data snooping detected - CORRECT
+
+ALL MEDIUM ISSUES VERIFIED CLEAN:
+==================================
+- ISSUE-MED-001: Allocation timing correct (documentation gap only)
+- ISSUE-MED-002: Entry signal timing correct (documentation gap only)
+- ISSUE-MED-003: VIX timing correct (EOD close, no look-ahead)
+
+TIMING VERIFICATION:
+====================
+Date t (EOD 16:00):
+  - SPY close, VIX close, RV20, etc. → All available
+  - Compute features (RV, IV from VIX)
+  - Classify regime (uses features from t and prior)
+  - Compute profile scores (uses regime + features)
+  - Generate entry signal: score > threshold AND regime in filter
+  - Set pending_entry_signal = True
+
+Date t+1:
+  - Execute trade (get bid/ask, enter position)
+  - Mark-to-market existing positions (mid price)
+  - Check exit conditions (DTE, max loss, regime change)
+  - Calculate daily P&L
+
+RESULT: No future information used. All decisions use data available at decision time.
+
+CRITICAL CHECKS PASSED:
+=======================
+✅ Look-ahead bias: NONE (entry signal → t+1 execution)
+✅ Survivorship bias: NONE (SPY only, no delisting)
+✅ Data snooping: NONE (parameters not optimized on results)
+✅ P&L accounting: CORRECT (entry/exit spread paid, MTM mid)
+✅ Execution prices: REALISTIC (Polygon data + ExecutionModel)
+✅ Walk-forward compliance: VERIFIED (Cycle 1 audit)
+
+TRANSACTION COST VERIFICATION:
+===============================
+✅ Entry: Pay ask (longs) / receive bid (shorts)
+✅ Exit: Receive bid (longs) / pay ask (shorts)
+✅ MTM: Mid price (standard practice)
+✅ Spreads: Vary by moneyness, DTE, volatility (realistic)
+✅ Commissions: Fixed per contract (not performance-based)
+✅ Delta hedge: Uniform costs (not selective)
+
+RECOMMENDED ACTIONS:
+====================
+Priority 1: Run clean backtest with all Cycle 1 fixes
+Priority 2: Analyze results (expect Sharpe 0.5-1.0 best case)
+Priority 3: If still negative → Strategy may not work (not a bias issue)
+
+OPTIONAL IMPROVEMENTS (No Bias):
+=================================
+- Add timing documentation (VIX, allocation, entry signal)
+- Add defensive checks (feature validation)
+- Document MTM rationale (mid price for fair value)
+
+CONFIDENCE LEVEL: HIGH
+======================
+- 2,300+ lines of code reviewed
+- Timing diagram verified
+- VIX loading verified
+- P&L calculation verified
+- Execution price verification passed
+- Cross-referenced with Cycle 1 audits
+
+CONCLUSION:
+===========
+The backtest infrastructure is CLEAN. No look-ahead bias, no data snooping, no survivorship bias.
+If results are still negative after running clean backtest, the strategy itself may not be profitable
+after transaction costs, NOT a bias/implementation issue.
+
+Proceed to run validation backtest with confidence.
+
+Files Reviewed:
+===============
+- src/backtest/engine.py (303 lines)
+- src/backtest/rotation.py (421 lines)
+- src/backtest/portfolio.py (273 lines)
+- src/trading/simulator.py (705 lines)
+- src/trading/trade.py (334 lines)
+- src/trading/profiles/profile_1.py (275 lines)
+- src/data/loaders.py (VIX loading verification)
+
+Total: ~2,300 lines audited

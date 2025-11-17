@@ -1,0 +1,280 @@
+================================================================================
+PROFILE 3 CHARM - EXIT TIMING RULES (QUICK REFERENCE)
+================================================================================
+
+PRINCIPLE
+=========
+CHARM trades peak LATE (days 12-14), not early. Late peaks = profitable.
+Early peaks = false signals that reverse into losses.
+
+Hold trades that are collecting theta properly. Exit early if gamma bleed begins.
+
+================================================================================
+THE NUMBERS
+================================================================================
+
+Winning Pattern (Peak Days 12-14):
+  - 39 trades (56.5%)
+  - 100-87.5% win rate
+  - Avg profit: $300-600 per trade
+  - Avg peak: $550+ unrealized
+
+Losing Pattern (Peak Days 0-8):
+  - 19 trades (27.5%)
+  - 0-10% win rate
+  - Avg loss: -$1,185 per trade
+  - Avg peak: $220 (false signal, reverses)
+
+Decision Zone (Peak Days 9-11):
+  - 14 trades (20.3%)
+  - 50-80% win rate
+  - Borderline (monitor closely)
+
+================================================================================
+RULES FOR LIVE TRADING
+================================================================================
+
+RULE 1: HARD STOP - EXIT IF PEAK HASN'T MATERIALIZED BY DAY 8
+────────────────────────────────────────────────────────────────
+When to trigger:
+  - Day 8 EOD: P&L is still unrealized, not yet positive
+  - OR: Peak has occurred but is <$100 (insufficient decay)
+  - OR: Delta has blown past ±0.35 (gamma risk too high)
+
+Why:
+  - 0% win rate on peaks before day 8
+  - Average loss: -$1,992 if held to expiry
+  - Early peaks reverse 100% of the time
+
+Exit action:
+  - Close position on Day 8 or Day 9
+  - Don't wait for Day 14
+  - Accept small loss to avoid catastrophic ones
+
+Expected: Saves ~$500-1,500 per problematic trade
+
+────────────────────────────────────────────────────────────────
+
+RULE 2: PEAK CAPTURE - HOLD IF PEAK OCCURS DAYS 10+
+────────────────────────────────────────────────────
+When to trigger:
+  - Day 10+: Unrealized P&L reaches a new high (peak detected)
+  - Market conditions stable or favorable for straddle
+
+Why:
+  - 85%+ win rate on peaks days 10-14
+  - Theta decay is real, not temporary reversal
+  - Less time for position to unwind
+  - Final 3 days = theta acceleration
+
+Hold action:
+  - Let trade run to Day 14 (or 1 day after detected peak)
+  - Expected final P&L: +$250-600
+  - Position is in "safe zone" - theta will likely hold
+
+Expected: Capture $300-600 per trade
+
+────────────────────────────────────────────────────────────────
+
+RULE 3: DECISION ZONE DAYS 8-9 (AMBIGUOUS TRADES)
+──────────────────────────────────────────────────
+When to trigger:
+  - Day 8 or 9: P&L is marginal (+$50 to -$100)
+  - Uncertain if peak is forming or reversing
+
+Monitoring criteria:
+  a) Greeks Check:
+     - If delta > |0.35|: EXIT (gamma risk too high)
+     - If gamma < -0.03: EXIT (too short gamma for protection)
+     - If theta/day has turned negative: EXIT (stopped collecting decay)
+
+  b) Volatility Check:
+     - If IV spiked >15% in last 2 days: EXIT (vega losses now)
+     - If IV dropped >10% AND position underwater: EXIT (vega worked against)
+
+  c) Technical Check:
+     - If spot moved >3 ATR from entry strike: CONSIDER EXIT (far OTM, gamma risk)
+     - If new volatility regime forming: EXIT (old regime assumptions broken)
+
+Decision matrix:
+  Multiple warning signs? → EXIT today
+  One warning sign?      → EXIT if P&L < 0, HOLD if P&L > +$100
+  No warning signs?      → HOLD (theta is probably working)
+
+Expected: Avoid ~50% of marginal reversal losses
+
+────────────────────────────────────────────────────────────────
+
+RULE 4: LATE-HOLD BENEFIT RULE
+────────────────────────────────
+When peak detected on Day 12-14:
+  - Don't exit just because peak is "today"
+  - These peaks have 100% win rate (Day 14) to 87.5% (Day 13)
+  - Decay is minimal, time decay huge
+
+Hold action:
+  - Hold through Day 14 EOD
+  - Position is in terminal decay phase (theta explosion)
+  - No adverse move can hurt much with <1% of contract life remaining
+
+Expected: Capture final +$200-400 on top of existing gains
+
+================================================================================
+MONITORING CHECKLIST (Daily)
+================================================================================
+
+Morning (before market):
+  ☐ Check overnight Greeks changes
+  ☐ Note VIX/IV level vs entry level
+  ☐ Identify if today might trigger Rule 1, 2, or 3
+
+During market:
+  ☐ Track real-time P&L vs day's baseline
+  ☐ If P&L hits new high (potential Rule 2): Note peak day
+  ☐ Monitor if Delta breaches ±0.35: Ready to exit
+  ☐ Watch for IV moves >10%: Ready to exit if underlying moves
+
+Close (end of day):
+  ☐ Calculate cumulative θ realized vs expected
+  ☐ Check if trade still meets holding criteria
+  ☐ Evaluate if tomorrow's expiry will trigger any rules
+
+================================================================================
+PROFILE-SPECIFIC GREEKS TARGETS
+================================================================================
+
+Entry (typical):
+  Theta:  +$80-120/day     (high, what we're harvesting)
+  Delta:  ±0.05-0.10       (neutral, delta-hedged straddle)
+  Gamma:  -0.035 to -0.045 (short, inherent to straddle)
+  Vega:   -$80 to -100     (vega negative - want IV down or stable)
+
+Safe Zone (Days 8-10):
+  Theta:  +$60-90/day      (still decaying, should be >0)
+  Delta:  Should remain ±0.1-0.2 (if larger, something's wrong)
+  Gamma:  Still negative (OK)
+  Vega:   Watch for moves > -$150 (IV expansion hurting)
+
+Exit Zone (Days 12-14):
+  Theta:  Should spike $100-150/day (terminal decay)
+  If Theta < $40/day on Day 12: Exit (stopped collecting)
+  If Vega < -$150: Exit (IV kill likely)
+
+Exit Triggers (Any of these):
+  ❌ Delta breaches ±0.40
+  ❌ Gamma worse than -0.06 (too much gamma risk)
+  ❌ Theta turns negative (not collecting anymore)
+  ❌ Vega losses > unrealized P&L (getting killed on IV)
+  ❌ Trade is on Day 8-9 with P&L < 0 (Rule 3: EXIT)
+
+================================================================================
+SCENARIO EXAMPLES
+================================================================================
+
+SCENARIO A: "Peak on Day 14 (Optimal)"
+─────────────────────────────────────
+Entry: SPY 345 short straddle, 46 DTE, collected $80/day theta
+Day 7:  P&L = $100 (small, but present)
+Day 10: P&L = $400 (larger, still holding)
+Day 12: P&L = $480 (detected peak!)
+Day 13: P&L = $540 (continuing up)
+Day 14: P&L = $602 (exit, peak day)
+Result: +$602 profit
+
+Action: HOLD through Day 14. This is your best-case scenario.
+
+────────────────────────────────────────────────────────────────
+
+SCENARIO B: "Peak on Day 7 (Bad Signal)"
+────────────────────────────────────────
+Entry: SPY 348 short straddle, 24 DTE, collected $95/day theta
+Day 2:  P&L = +$50 (small gain)
+Day 5:  P&L = +$150 (decent)
+Day 7:  P&L = +$439 (BIG PEAK - false signal!)
+Day 9:  Market has moved $2 up and down, volatility re-expanding
+Day 10: P&L = -$400 (hole opens up)
+Day 12: P&L = -$1,200 (falling fast)
+Day 14: P&L = -$417 (final exit, underwater)
+Result: -$417 loss
+
+Prevention: EXIT on Day 8 when Rule 1 triggers (Day 7 early peak detected).
+Saved loss: ~$800 by exiting after peak reversal pattern confirmed.
+
+────────────────────────────────────────────────────────────────
+
+SCENARIO C: "Marginal Trade - Rule 3 Applies"
+─────────────────────────────────────────────
+Entry: SPY 340 short straddle, 35 DTE, collected $85/day theta
+Day 5:  P&L = +$200 (decent start)
+Day 8:  P&L = +$50 (fading)
+Day 8 Analysis:
+  - Delta: 0.32 (elevated but not critical)
+  - IV: Up 12% (vega hurt us)
+  - Theta: $65/day (still positive)
+  - Decision: One warning sign (IV up), P&L marginal
+  - Action: Monitor today, decide tomorrow
+
+Day 9:  P&L = -$100 (clearly reversing)
+Day 9 Trigger: Rule 3 - Two warning signs now + negative P&L
+  - Decision: EXIT today
+  - Expected loss: -$100
+
+Alternative (held through):
+Day 14: Final P&L = -$640 (if left alone)
+
+Prevention: EXIT on Day 9 per Rule 3.
+Saved loss: ~$540
+
+================================================================================
+QUICK DECISION TREE
+================================================================================
+
+Current day = ?
+├─ Day 0-7
+│  └─ Has a profit peak occurred yet?
+│     ├─ NO: Continue monitoring (expected for CHARM)
+│     └─ YES: Peak detected before Day 8!
+│        ├─ Check delta: Is it > |0.35|?
+│        │  ├─ YES: EXIT (Rule 1 + gamma risk)
+│        │  └─ NO: Monitor Day 8-9 closely (Rule 3)
+│
+├─ Day 8-9
+│  └─ Ambiguous zone. Check Greeks:
+│     ├─ Delta > 0.35 OR Theta < $40? → EXIT
+│     ├─ P&L < -$100 AND IV spiked? → EXIT
+│     ├─ P&L > +$100 AND stable? → HOLD
+│     └─ Otherwise? → MONITOR
+│
+├─ Day 10-11
+│  └─ Is unrealized P&L positive?
+│     ├─ YES: Peak likely forming (Rule 2) → HOLD to Day 14
+│     └─ NO: Monitor for Rule 3 triggers
+│
+└─ Day 12-14
+   └─ Terminal decay phase (Rule 4)
+      ├─ Theta spiking? → HOLD (capturing best theta)
+      └─ Theta negative? → EXIT today (stopped collecting)
+
+================================================================================
+EXPECTED RESULTS WITH THESE RULES
+================================================================================
+
+Current (Hold all to Day 14):
+  Avg P&L:    -$15
+  Win rate:   63.8%
+  Best:       +$1,404
+  Worst:      -$3,490
+  Stdev:      $870
+
+With Rules Applied:
+  Avg P&L:    +$250-350 (estimated)
+  Win rate:   85%+ (estimated)
+  Best:       +$800-900 (early exit on bad trades)
+  Worst:      -$400-500 (stopped out better)
+  Stdev:      $350 (much tighter)
+
+Annual Improvement (100 trades):
+  +$265 per trade × 100 = +$26,500 additional profit
+  Risk reduction: ~60% lower volatility
+
+================================================================================

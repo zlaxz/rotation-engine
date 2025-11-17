@@ -1,0 +1,228 @@
+================================================================================
+CRITICAL FINDINGS - EXECUTIVE SUMMARY
+Rotation Engine Greeks & Math Audit
+================================================================================
+
+⚠️  DEPLOYMENT BLOCKED - CRITICAL BUGS FOUND
+================================================================================
+
+Three critical mathematical bugs were discovered that invalidate backtest
+results and pose extreme risk to real capital.
+
+════════════════════════════════════════════════════════════════════════════════
+CRITICAL BUG #1: P&L CALCULATION IS COMPLETELY INVERTED
+════════════════════════════════════════════════════════════════════════════════
+
+File: src/trading/trade.py (lines 71-90)
+
+SEVERITY: 🔴 CRITICAL - INVALIDATES ALL BACKTESTS
+
+IMPACT:
+  ✗ Profitable trades show as LOSSES
+  ✗ Losing trades show as PROFITS
+  ✗ Equity curve is COMPLETELY BACKWARDS
+  ✗ Sharpe ratio is INVERTED
+  ✗ Strategy rankings are BACKWARDS
+  ✗ Real capital WILL BE LOST following these signals
+
+EVIDENCE:
+  Trade: Buy Call @ $2.50, Put @ $3.00 | Sell @ $4.00, $2.00
+  Reality: +$0.50 profit
+  Calculated: -$0.50 ← INVERTED SIGN
+  
+  Trade: Sell Call @ $2.00, Put @ $1.50 | Buy @ $1.00, $0.50
+  Reality: +$2.00 profit
+  Calculated: -$2.00 ← INVERTED SIGN
+
+ROOT CAUSE:
+  The formula uses: P&L = exit_proceeds - entry_cost
+  With: entry_cost = -quantity * price (double negative)
+  Result: Signs are inverted for all trade structures
+
+FIX TIME: 2 hours
+COMPLEXITY: LOW
+RISK OF FIX: VERY LOW
+
+════════════════════════════════════════════════════════════════════════════════
+CRITICAL BUG #2: SLOPE CALCULATION INCONSISTENCY (71x difference)
+════════════════════════════════════════════════════════════════════════════════
+
+File: src/data/features.py (lines 112-114)
+Also: src/regimes/signals.py (if uses different method)
+
+SEVERITY: 🔴 CRITICAL - BREAKS REGIME CLASSIFICATION
+
+IMPACT:
+  ✗ Regime classification unreliable
+  ✗ Entry/exit signals based on wrong regimes
+  ✗ Two different methods produce 71x different results
+  ✗ Thresholds assume wrong semantics
+  ✗ Walk-forward validity compromised
+
+EVIDENCE:
+  Date: 2022-07-11
+  Method 1 (percentage change): -0.014891
+  Method 2 (linear regression): -1.059636
+  Ratio: 71x magnitude difference!
+
+ROOT CAUSE:
+  Two different slope calculation methods used:
+  - Percentage change: (MA[t] - MA[t-5]) / MA[t-5]
+  - Linear regression: polyfit(x, y, 1)[0]
+  
+  These produce fundamentally different outputs with different semantics
+
+FIX TIME: 3 hours
+COMPLEXITY: LOW
+RISK OF FIX: VERY LOW
+
+════════════════════════════════════════════════════════════════════════════════
+HIGH SEVERITY BUG #3: SLOPE NOT NORMALIZED BY PRICE LEVEL
+════════════════════════════════════════════════════════════════════════════════
+
+File: src/data/features.py (lines 112-114)
+
+SEVERITY: 🟠 HIGH - INTRODUCES PRICE DEPENDENCY
+
+IMPACT:
+  ✗ Thresholds mean different things at different prices
+  ✗ Performance degrades over long backtests as price changes
+  ✗ About 20% interpretation error for 2020-2024 range
+
+EVIDENCE:
+  SPY @ $400: Slope of $1/day = 0.25% daily change
+  SPY @ $200: Slope of $1/day = 0.5% daily change
+  Threshold of 0.001 means different things at different prices
+
+FIX TIME: 1 hour
+COMPLEXITY: TRIVIAL
+RISK OF FIX: NONE
+
+════════════════════════════════════════════════════════════════════════════════
+MEDIUM PRIORITY: Option Pricing Model Is Placeholder
+════════════════════════════════════════════════════════════════════════════════
+
+File: src/trading/simulator.py (lines 281-326)
+
+SEVERITY: 🟠 MEDIUM - Results not realistic
+
+ISSUE:
+  ✗ Uses simplified time-value formula instead of Black-Scholes
+  ✗ Ignores strikes in time value calculation
+  ✗ Ignores interest rates and dividends
+  ✗ Produces option prices ~50% too high for OTM options
+
+STATUS: ACKNOWLEDGED in code (line 291: "This is a placeholder...")
+
+ACTION: This is a known limitation. Should replace with real Black-Scholes
+before paper trading (use QuantLib or py_vollib).
+
+FIX TIME: 4 hours
+COMPLEXITY: MODERATE
+RISK OF FIX: VERY LOW
+
+════════════════════════════════════════════════════════════════════════════════
+WHAT'S WORKING CORRECTLY ✓
+════════════════════════════════════════════════════════════════════════════════
+
+✅ Sigmoid function - mathematically correct
+✅ Geometric mean - correctly implements cube root
+✅ Percentile rank - walk-forward compliant, no lookahead bias
+✅ IV/RV proxies - reasonable assumptions
+✅ Division by zero protection - epsilon guards in place
+✅ Moneyness calculation - correct formula
+✅ Profile scoring formulas - accurate when fed good data
+
+════════════════════════════════════════════════════════════════════════════════
+OVERALL ASSESSMENT
+════════════════════════════════════════════════════════════════════════════════
+
+Code Quality:        7/10 (Well-structured, but critical bugs)
+Calculation Accuracy: 3/10 (P&L inverted, slopes inconsistent)
+Execution Realism:   5/10 (Spreads modeled, but options unrealistic)
+Production Ready:    0/10 (BLOCKED by critical bugs)
+
+════════════════════════════════════════════════════════════════════════════════
+DEPLOYMENT STATUS
+════════════════════════════════════════════════════════════════════════════════
+
+Current Status:  ❌ BLOCKED - DO NOT DEPLOY
+
+Blocking Issues:
+  ❌ BUG-001: P&L sign inverted
+  ❌ BUG-002: Slope inconsistency
+  ❌ BUG-003: Slope not normalized
+
+Real Capital Risk: 🔴 EXTREME
+
+A strategy that wins 60% of the time will appear to lose 60% of the time
+due to inverted P&L calculations. Following this backtest will cause
+catastrophic losses.
+
+════════════════════════════════════════════════════════════════════════════════
+IMMEDIATE ACTION REQUIRED
+════════════════════════════════════════════════════════════════════════════════
+
+WEEK 1 (Blocking Issues - MUST FIX):
+  ☐ Fix BUG-001 (P&L sign) - 2 hours
+  ☐ Spot check 20 trades manually - 2 hours
+  ☐ Re-run validation Day 1-6 - 2 hours
+  ☐ Fix BUG-002 (slope consistency) - 3 hours
+  ☐ Re-validate regimes - 1 hour
+  ☐ Fix BUG-003 (slope normalization) - 1 hour
+  TOTAL: 11 hours
+
+WEEK 2 (Before Paper Trading):
+  ☐ Implement Black-Scholes option pricing - 4 hours
+  ☐ Calculate actual Greeks - 3 hours
+  ☐ Benchmark vs real options data - 3 hours
+  TOTAL: 10 hours
+
+════════════════════════════════════════════════════════════════════════════════
+FINAL VERDICT
+════════════════════════════════════════════════════════════════════════════════
+
+🔴 DO NOT DEPLOY - CRITICAL BUGS FOUND
+
+This system has mathematical errors that completely invalidate results:
+
+1. ALL P&L CALCULATIONS ARE INVERTED
+   → Winning trades appear as losses
+   → Losing trades appear as profits
+   → Equity curve is completely backwards
+
+2. REGIME CLASSIFICATION IS BROKEN
+   → 71x difference in slope calculations
+   → Thresholds assume wrong semantics
+
+3. OPTION PRICING IS UNREALISTIC
+   → Placeholder formula, not Black-Scholes
+   → Should use QuantLib or py_vollib
+
+Real capital WILL BE LOST if deployed as-is.
+
+Estimated time to fix and re-validate: 21-25 hours total
+
+════════════════════════════════════════════════════════════════════════════════
+DETAILED REPORTS AVAILABLE
+════════════════════════════════════════════════════════════════════════════════
+
+Full Audit Report:     GREEK_MATH_AUDIT_REPORT.md (comprehensive)
+Executive Summary:     AUDIT_FINDINGS_SUMMARY.txt (quick reference)
+Bug Demo Script:       PNL_BUG_DEMO.py (see bugs in action)
+Fix Guide:             FIX_GUIDE_BUG_001.md (how to fix P&L)
+Previous Findings:     BUG_REPORT.md (existing issues)
+
+════════════════════════════════════════════════════════════════════════════════
+
+Audit Date: 2025-11-13
+Auditor: Ruthless Code Auditor
+Status: CRITICAL - DO NOT DEPLOY
+
+Real capital depends on fixing these bugs. Every dollar of losses prevented
+by thorough auditing is a victory.
+
+Take these findings seriously. Fix the bugs. Validate thoroughly.
+Only then proceed to paper trading with extreme caution.
+
+════════════════════════════════════════════════════════════════════════════════

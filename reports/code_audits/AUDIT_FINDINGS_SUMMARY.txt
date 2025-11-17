@@ -1,0 +1,177 @@
+================================================================================
+ROTATION ENGINE - DATA CONTAMINATION AUDIT FINDINGS
+================================================================================
+
+AUDIT DATE: 2025-11-13
+PROJECT: /Users/zstoc/rotation-engine/
+CLASSIFICATION: CRITICAL - DO NOT DEPLOY
+
+================================================================================
+CORE FINDING: ARCHITECT MISMATCH
+================================================================================
+
+System trades OPTIONS strategies but detects CONDITIONS from EQUITY market.
+
+Options P&L depends on: Implied Volatility (IV), Greeks, Options chain skew
+System measures: Realized Volatility (RV), Price moves, Equity technical indicators
+
+These are COMPLETELY ORTHOGONAL MARKETS.
+
+================================================================================
+4 CRITICAL ARCHITECTURE FLAWS
+================================================================================
+
+1. IV PROXY - RV * 1.2 (FIXED CONSTANT)
+   Location: src/profiles/features.py:81-98
+   Problem: Real IV/RV varies 0.8x-5.0x, code assumes fixed 1.2x
+   Impact: IV rank wrong by 20-300% depending on regime
+   Code:
+     df['IV7'] = df['RV5'] * 1.2
+     df['IV20'] = df['RV10'] * 1.2
+     df['IV60'] = df['RV20'] * 1.2
+
+2. SKEW PROXY - ATR/RV RATIO (UNRELATED TO SKEW)
+   Location: src/profiles/features.py:150-173
+   Problem: Measures price range, not put/call IV spread
+   Impact: Skew detection triggers for wrong reasons
+   Evidence: compute_skew_proxy() in signals.py returns hardcoded zeros
+   Location: src/regimes/signals.py:186-201
+
+3. VVIX PROXY - STDEV OF RV (BACKWARD-LOOKING)
+   Location: src/profiles/features.py:115-128
+   Problem: Measures historical vol variance, not market vol-of-vol expectations
+   Impact: Profile 6 (VOV) triggers when vol stabilizing (bad gamma trade)
+   Code:
+     df['VVIX'] = df['RV10'].rolling(window=20, min_periods=10).std()
+
+4. IV RANK FROM RV PERCENTILE (MEANINGLESS)
+   Location: src/profiles/features.py:100-113
+   Problem: Percentile of (RV*1.2), not actual IV percentile
+   Impact: IV rank correlates with RV movements, not actual implied vol
+   Code:
+     df['IV_rank_20'] = self._rolling_percentile(df['IV20'], window=60)
+     where IV20 = RV10 * 1.2
+
+================================================================================
+EVIDENCE THIS WAS PLACEHOLDER CODE
+================================================================================
+
+File: src/regimes/signals.py (lines 48-50)
+  "# RV/IV ratios - For now use RV20 as IV proxy"
+  "# In production, replace with actual IV from options chain"
+
+File: src/profiles/features.py (lines 1-11)
+  "# IV proxies (using RV until real IV available)"
+
+File: src/regimes/signals.py (lines 186-201)
+  def compute_skew_proxy(self, options_data):
+      """For now, returns placeholder. In production, compute:
+         - 25D put IV - ATM IV
+      """
+      # TODO: Implement actual skew calculation when IV data is available
+      return pd.Series(0.0, index=options_data.index)
+
+VERDICT: Temporary development code left in production.
+
+================================================================================
+DATA AVAILABILITY (PROVES NEGLIGENCE)
+================================================================================
+
+Real options data EXISTS but is DELIBERATELY NOT USED:
+
+Path: /Volumes/VelocityData/polygon_downloads/us_options_opra/day_aggs_v1/
+      Contains SPY options chain data
+
+Class: OptionsDataLoader (src/data/loaders.py)
+      Can parse and load real options data
+
+Infrastructure exists to use real IV but system chose not to.
+
+================================================================================
+CONSEQUENCES IF DEPLOYED
+================================================================================
+
+Days 1-5: Random luck, some trades coincide with real opportunities
+Week 1-2: Profiles trigger when equity conditions match, but options don't
+Month 1: Capital losses as "opportunities" detected don't actually exist
+
+Example:
+  - RV spikes from SPY move
+  - Profile thinks "vol elevated, sell gamma"
+  - But IV hasn't repriced yet (still cheap)
+  - Result: Sell gamma when actually cheap (bad trade)
+
+================================================================================
+REMEDIATION OPTIONS
+================================================================================
+
+Option A: USE REAL IV DATA (Recommended) - 2-3 Days
+  1. Parse IV surface from options chain
+  2. Calculate IV rank from real IV
+  3. Calculate actual skew from options chain
+  4. Use real VVIX or calculate from options
+  5. Retrain and revalidate profiles
+  Benefit: System measures what it claims
+  Cost: 2-3 days development
+
+Option B: HONEST PROXY SYSTEM - 1 Day
+  1. Rename to "Equity Detector" (not "Options Convexity")
+  2. Document measures equity conditions, not options opportunities
+  3. Separately validate equity→options profitability correlation
+  Benefit: Honest about what system measures
+  Cost: 1 day, probably low correlation
+
+Option C: REDESIGN FROM SCRATCH - 1 Week
+  1. Start with real IV data
+  2. Build profiles for actual options conditions
+  3. Validate against options P&L
+  Benefit: Solid architecture
+  Cost: 1 week, but won't need rework later
+
+================================================================================
+DEPLOYMENT DECISION
+================================================================================
+
+STATUS: CRITICAL - BLOCK DEPLOYMENT
+
+This is NOT a calibration issue. You can't fix proxy mismatch with better
+thresholds. The fundamental problem is measuring the wrong market.
+
+================================================================================
+DETAILED REPORTS
+================================================================================
+
+Full Report:
+  /Users/zstoc/rotation-engine/FEATURE_CONTAMINATION_AUDIT.md (22 KB)
+
+Executive Summary:
+  /Users/zstoc/rotation-engine/AUDIT_EXECUTIVE_SUMMARY.md (9.4 KB)
+
+This Summary:
+  /Users/zstoc/rotation-engine/AUDIT_FINDINGS_SUMMARY.txt
+
+================================================================================
+FILES AFFECTED
+================================================================================
+
+Core Feature Files:
+  - src/data/features.py (RV calculation - correct, but used as IV proxy)
+  - src/regimes/signals.py (IV proxies, skew placeholder, percentiles)
+  - src/profiles/features.py (IV proxies, VVIX proxy, skew proxy)
+  - src/profiles/detectors.py (Uses poisoned features in all 6 profiles)
+  - src/data/loaders.py (Has infrastructure but not used)
+
+Validation Files:
+  - src/regimes/validator.py (Only checks labels, not correlation)
+  - src/profiles/validator.py (Only checks score ranges 0-1)
+
+================================================================================
+AUDIT PERFORMED BY
+================================================================================
+
+Quantitative Code Auditor - Tier 0 (Look-ahead Bias) Focus
+Date: 2025-11-13
+Methodology: ASSUME GUILTY UNTIL PROVEN INNOCENT
+Tools: Code review, architecture analysis, scenario testing
+
+================================================================================
