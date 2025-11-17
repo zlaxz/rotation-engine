@@ -80,18 +80,32 @@ class TradeTracker:
             opt_type = leg['type']
             qty = leg['qty']
 
-            price = self.polygon.get_option_price(
-                entry_date, position['strike'], position['expiry'], opt_type, 'mid'
-            )
+            # FIX BUG-001 (SYSTEMIC): Get execution prices (ask/bid), not mid+spread
+            # This matches how Simulator.py gets prices (lines 424-429)
+            if qty > 0:
+                # Long: pay the ask
+                price = self.polygon.get_option_price(
+                    entry_date, position['strike'], position['expiry'], opt_type, 'ask'
+                )
+            else:
+                # Short: receive the bid
+                price = self.polygon.get_option_price(
+                    entry_date, position['strike'], position['expiry'], opt_type, 'bid'
+                )
+
             if price is None:
                 return None
 
             entry_prices[opt_type] = price
-            # Cost: positive for buying, negative for selling
-            leg_cost = qty * (price + (spread if qty > 0 else -spread)) * 100
+
+            # Entry cost calculation (price already includes spread via ask/bid)
+            # For long (qty > 0): positive = cash outflow (we paid ask)
+            # For short (qty < 0): negative = cash inflow (we received bid)
+            leg_cost = qty * price * 100
+
             entry_cost += leg_cost
 
-        entry_cost += commission
+        entry_cost += commission  # Commission is always a cost (positive addition)
 
         # Calculate entry Greeks
         entry_greeks = self._calculate_position_greeks(
@@ -265,6 +279,7 @@ class TradeTracker:
                     break
 
         # Calculate Greeks for each leg and sum
+        CONTRACT_MULTIPLIER = 100  # FIX BUG-002: Options represent 100 shares per contract
         net_greeks = {'delta': 0, 'gamma': 0, 'theta': 0, 'vega': 0}
 
         for leg in legs:
@@ -275,11 +290,11 @@ class TradeTracker:
                 spot, strike, dte / 365.0, r, iv, opt_type
             )
 
-            # Scale by quantity (positive = long, negative = short)
-            net_greeks['delta'] += greeks['delta'] * qty
-            net_greeks['gamma'] += greeks['gamma'] * qty
-            net_greeks['theta'] += greeks['theta'] * qty
-            net_greeks['vega'] += greeks['vega'] * qty
+            # Scale by quantity (positive = long, negative = short) AND contract multiplier
+            net_greeks['delta'] += greeks['delta'] * qty * CONTRACT_MULTIPLIER
+            net_greeks['gamma'] += greeks['gamma'] * qty * CONTRACT_MULTIPLIER
+            net_greeks['theta'] += greeks['theta'] * qty * CONTRACT_MULTIPLIER
+            net_greeks['vega'] += greeks['vega'] * qty * CONTRACT_MULTIPLIER
 
         return {k: float(v) for k, v in net_greeks.items()}
 

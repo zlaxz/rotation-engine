@@ -219,9 +219,10 @@ class Trade:
             if len(self.greeks_history) >= 2:
                 self._calculate_pnl_attribution()
 
-        # Unrealized P&L - all costs (entry commission, hedging, estimated exit commission)
-        # This gives realistic P&L that accounts for future exit costs
-        return unrealized_pnl - self.entry_commission - self.cumulative_hedge_cost - estimated_exit_commission
+        # FIX BUG-003: Unrealized P&L - hedge costs + estimated exit costs
+        # Entry commission already paid (sunk cost), don't subtract from unrealized
+        # Will be subtracted from realized P&L at close
+        return unrealized_pnl - self.cumulative_hedge_cost - estimated_exit_commission
 
     def add_hedge_cost(self, cost: float):
         """Add to cumulative hedging cost."""
