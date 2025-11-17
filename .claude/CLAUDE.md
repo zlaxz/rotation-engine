@@ -84,6 +84,118 @@ When presenting backtest results or analysis:
 
 ---
 
+## 🔴 FILE ORGANIZATION - IRON RULES (ENFORCED)
+
+**ABSOLUTE RULE: ONE version per file. Git tracks versions, not filenames.**
+
+### NEVER ALLOW (Pre-commit Hook Enforced):
+
+- ❌ Version suffixes: `script_v2.py`, `backtest_final.py`, `test_old.py`
+- ❌ Root-level scripts: ALL `.py` files must be in `src/`, `scripts/`, or `experiments/`
+- ❌ Root-level results: ALL `.csv`, `.json`, `.png` must be in `data/` or `reports/`
+- ❌ Multiple versions in same location: If you need a new version, `git commit` the old one first
+
+### Directory Structure (Enforced):
+
+```
+/Users/zstoc/rotation-engine/
+├── src/                    # Production code ONLY (one version per file)
+├── scripts/                # One-off utilities (one version per file)
+├── experiments/            # Active experiments (max 5, dated folders)
+├── archive/                # Historical versions (timestamped, never edited)
+├── data/backtest_results/  # Results with METADATA.json
+├── docs/current/           # Current documentation
+├── tests/                  # Unit tests
+└── ROOT (5 files max)      # README, HANDOFF, SESSION_STATE, START_HERE, AGENTS
+```
+
+### Session-Start Protocol (MANDATORY):
+
+Before working on ANYTHING, I MUST:
+
+1. **Check for violations:**
+   ```bash
+   # Version suffixes in active zones
+   find src/ scripts/ experiments/ -name "*_v[0-9]*.py" -o -name "*_final*.py"
+   # Root-level scripts
+   ls -1 *.py 2>/dev/null | grep -v "^setup.py$"
+   ```
+
+2. **If violations found:**
+   - STOP immediately
+   - Present violations to user
+   - Offer: "Archive these [N] files now?"
+   - Execute archiving BEFORE proceeding
+
+3. **Cannot proceed with user's request until violations resolved.**
+
+### Session-End Protocol (MANDATORY):
+
+Before session ends, I MUST:
+
+1. **Check root directory:**
+   ```bash
+   ls -1 *.{py,csv,png,json,md} 2>/dev/null | \
+     grep -v "^(README|HANDOFF|SESSION_STATE|setup|00_START_HERE|AGENTS).*"
+   ```
+
+2. **If >5 files in root:**
+   - Cannot end session until cleaned up
+   - For each file: Archive, Move, or Delete?
+
+3. **Update SESSION_STATE.md:**
+   - Remove completed items from IN_PROGRESS
+   - Update file locations if moved
+
+### Git Workflow (Enforced by Pre-commit Hook):
+
+**When you need a new version:**
+
+```bash
+# ❌ WRONG (creates 2 versions)
+cp backtest.py backtest_v2.py
+
+# ✅ RIGHT (git tracks versions)
+git add backtest.py
+git commit -m "Working version before refactor"
+# Now edit backtest.py in place
+```
+
+**Pre-commit hook will BLOCK:**
+- Version suffixes in `src/`, `scripts/`, `experiments/`
+- Root-level `.py`, `.csv`, `.json`, `.png` files
+- Backtest results without `METADATA.json`
+
+### Why This Is Non-Negotiable:
+
+**Professional Quantitative Trading Infrastructure:**
+- Must know EXACTLY what code is validated
+- Must know EXACTLY what version produced results
+- Cannot have 2 versions of same file (which is production?)
+- One source of truth for all production code
+- Automatic enforcement through pre-commit hooks
+- Visual status tracking in SESSION_STATE.md
+
+**Real Capital at Risk:**
+- Chaos = can't trust what's validated
+- Can't trust = can't deploy
+- Can't deploy = no returns
+- Clean infrastructure = confidence to trade
+- Professional discipline is NON-NEGOTIABLE
+
+### Recovery Protocol:
+
+**If violations found:**
+
+1. Create timestamped archive folder
+2. Move violations to archive with reason
+3. Git commit: "chore: Archive [description]"
+4. Document in SESSION_STATE.md
+
+**See:** `docs/current/ORGANIZATION_RULES.md` for complete system
+
+---
+
 ## 🎯 DEEPSEEK SWARM ORCHESTRATION - THE COMPETITIVE ADVANTAGE
 
 **CRITICAL OPERATING MODEL:**
@@ -398,7 +510,7 @@ When saving to MCP memory in this project, use entity types:
 
 ### Lead with the Answer
 
-ADHD working memory is expensive. Get to the point FAST.
+**Get to the point FAST. Executive communication style.**
 
 ❌ "I've analyzed the regime classifier and there are some interesting patterns that suggest we might want to consider..."
 
@@ -476,10 +588,10 @@ cat SESSION_STATE.md
 - ✅ Challenge bad ideas directly (no softening)
 - ✅ Remember this is experimental mode (aggressive testing, kill failures fast)
 
-**Stacks on top of global ADHD framework:**
+**Stacks on top of global framework:**
 - File protection, memory system, SESSION_STATE.md updates - still active
 - Partnership model, communication style - still active
-- This config ADDS quant expertise on top
+- This config ADDS quant expertise and infrastructure discipline on top
 
 **When you launch Claude Code from this directory:**
 - I become your quantitative options trading research partner
