@@ -1,25 +1,30 @@
 # SESSION STATE - Rotation Engine Project
 
-**Last Updated:** 2025-11-16 Afternoon (Minute Bar Discovery + Critical Bugs Found)
+**Last Updated:** 2025-11-16 Late Evening (Organization System + Bug Fixes)
 **Project:** Convexity Rotation Trading Engine (High-Frequency Edge Discovery)
 **Location:** /Users/zstoc/rotation-engine
 **Philosophy:** Quick & nimble, not institutional. Markets as physics experiment.
 
 ---
 
-## 🔵 CURRENT RESULTS (Updated: 2025-11-16)
+## 🔴 CURRENT STATUS: INFRASTRUCTURE FIXED, CODE ON FEATURE BRANCH
 
-**Current Run:** `20251115_1651_post_bug_fixes`
-**Run Date:** 2025-11-15 4:51 PM
-**Validated:** 2025-11-15 11:01 PM
-**Status:** NOT VIABLE FOR DEPLOYMENT (see validation below)
+**Branch:** `bugfix/critical-4-bugs` (not merged to main)
+**Status:** ❌ NOT VALIDATED - Cannot trust results until bug fixes validated
+
+---
+
+## 🔵 LATEST RESULTS (Post Bug Fixes - 2025-11-16)
+
+**Run:** Post-fix backtest with 4 bugs corrected
+**Status:** ⚠️ CHANGED SIGNIFICANTLY (bugs were inflating returns)
 
 **Results Summary:**
 - Total Trades: 604
-- Total P&L: **+$1,030.20**
-- Peak Potential: **$348,896.60**
-- Win Rate: 45.9% (below 50% random baseline)
-- Capture Rate: **0.30%** (capturing almost nothing!)
+- Total P&L: **-$6,323** (was +$1,030 before fixes)
+- Peak Potential: **$342,579** (was $348,897 before fixes)
+- Change: **-$7,353** (bugs were inflating by this amount)
+- Capture Rate: **Still negative** (dumb 14-day exit)
 
 **Profile Breakdown (WITH 14-DAY DUMB EXIT):**
 - Profile 1 (LDG): 140 trades, -$2,863, **Peak $43,951** ✅ ENTRIES WORK
