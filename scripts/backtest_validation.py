@@ -177,7 +177,8 @@ def load_spy_data() -> pd.DataFrame:
     print(f"   Actual:   {actual_start} to {actual_end}")
     print(f"   Warmup days used: {len(spy_with_warmup) - len(spy)}")
 
-    if actual_start != VALIDATION_START or actual_end > VALIDATION_END:
+    # FIXED Round 7: Check should be < not != (warmup data makes start earlier)
+    if actual_start < VALIDATION_START or actual_end > VALIDATION_END:
         raise ValueError(f"DATA LEAK DETECTED: Data outside validation period!")
 
     # Verify warmup provided clean features

@@ -22,15 +22,17 @@ class ExitEngine:
     Future phases will add profit targets, risk guards, condition exits.
     """
 
-    # Phase 1: Profile-specific exit days (IMMUTABLE)
-    # Based on fresh backtest 2025-11-18 empirical peak timing
+    # Phase 1: Profile-specific exit days (DEFAULT - will be overridden by train-derived)
+    # FIXED Round 7: Use neutral defaults (all 7 days) to avoid contamination
+    # Train period will derive actual median peak timing from 2020-2021 data
+    # Previous values were contaminated (derived from full 2020-2024 dataset)
     PROFILE_EXIT_DAYS = {
-        'Profile_1_LDG': 7,    # Median peak: 6.9 days
-        'Profile_2_SDG': 5,    # Median peak: 4.5 days (short-dated)
-        'Profile_3_CHARM': 3,  # Median peak: 0.0 days (immediate theta)
-        'Profile_4_VANNA': 8,  # Median peak: 7.7 days (only working profile)
-        'Profile_5_SKEW': 5,   # Median peak: 4.8 days (fear spike)
-        'Profile_6_VOV': 7     # Median peak: 6.9 days (vol expansion)
+        'Profile_1_LDG': 7,    # Neutral default - will be re-derived on train
+        'Profile_2_SDG': 7,    # Neutral default - will be re-derived on train
+        'Profile_3_CHARM': 7,  # Neutral default - will be re-derived on train
+        'Profile_4_VANNA': 7,  # Neutral default - will be re-derived on train
+        'Profile_5_SKEW': 7,   # Neutral default - will be re-derived on train
+        'Profile_6_VOV': 7     # Neutral default - will be re-derived on train
     }
 
     def __init__(self, phase: int = 1, custom_exit_days: Dict[str, int] = None):
