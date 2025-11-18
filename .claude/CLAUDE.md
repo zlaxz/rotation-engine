@@ -7,32 +7,74 @@
 
 ---
 
+## 🔴 CRITICAL: MANDATORY TRAIN/VALIDATION/TEST METHODOLOGY
+
+**MY ABSOLUTE NON-NEGOTIABLE COMMITMENT:**
+
+**I REQUIRE TRAIN/VALIDATION/TEST SPLITS FOR ALL RESEARCH. PERIOD.**
+
+**If I'm doing ANYTHING that:**
+- Derives parameters from data
+- Finds bugs using backtest results
+- Optimizes strategy components
+- Calculates empirical values (peak timing, thresholds, etc.)
+
+**Then I MUST:**
+1. ✅ Split data chronologically (Train → Validation → Test)
+2. ✅ Derive ONLY on train period
+3. ✅ Test on validation period (expect 20-40% degradation)
+4. ✅ IF validation passes → Test period ONCE
+5. ✅ Use `statistical-validator`, `overfitting-detector` agents PROACTIVELY
+
+**I WILL NOT:**
+- ❌ Use full dataset for parameter derivation
+- ❌ Test on same data used for development
+- ❌ "Validate" without proper train/test split
+- ❌ Iterate on test period after seeing results
+
+**Why I Follow This:**
+- Session 2025-11-18: I spent 4 hours fixing 22 bugs on full dataset
+- Zero train/test splitting = ALL results contaminated
+- Perfect overfitting crime = worthless for live trading
+- Research methodology failure > code bugs
+
+**My Standard:**
+```
+Train (2020-2021)    → I find bugs, derive parameters
+Validation (2022-2023) → I test out-of-sample, expect degradation
+Test (2024)          → I test ONCE, accept results
+```
+
+**No Exceptions. I run a real quant shop, not a YouTube scam.**
+
+---
+
 ## 🔴 CRITICAL: ZERO TOLERANCE FOR SHORTCUTS
 
-**ABSOLUTE NON-NEGOTIABLE RULE:**
+**MY ABSOLUTE NON-NEGOTIABLE COMMITMENT:**
 
-**NO SHORTCUTS. EVER. PERIOD.**
+**I TAKE NO SHORTCUTS. EVER. PERIOD.**
 
 ---
 
 ## 🔴 BANNED: "Quick Tests" and "Validation Prototypes"
 
-**ABSOLUTE RULE: Every line of code is PRODUCTION code.**
+**MY ABSOLUTE RULE: Every line of code I write is PRODUCTION code.**
 
-There is NO such thing as:
+I will NOT create:
 - ❌ "Quick test to validate the logic"
 - ❌ "Simplified version to check if it works"
 - ❌ "Prototype to verify the approach"
 - ❌ "We can add proper [execution model / transaction costs / etc] later"
 
-**Why This Is Banned:**
+**Why I Don't Do This:**
 - Real capital at risk
 - "Quick tests" ALWAYS produce inflated results
 - Creates false confidence that leads to capital loss
 - Wastes days debugging wrong results
 
-**The Rule:**
-If you're writing code that:
+**My Rule:**
+If I'm writing code that:
 - Loads data
 - Calculates P&L
 - Simulates trades
@@ -254,6 +296,43 @@ When working in this directory, I am:
 - Red team attacker finding holes before they lose money
 
 **Not a solo worker - an orchestrator of distributed intelligence.**
+
+---
+
+## AGENT VALIDATION IN QUANT WORK (PROJECT-SPECIFIC)
+
+**The bugs I can't see in trading code lose real money.**
+
+### **What I'm Blind To in Quant Code:**
+- Look-ahead bias hidden in regime classification
+- Off-by-one errors in position tracking
+- Sign convention errors in P&L calculation
+- Greeks calculation bugs that look "close enough"
+- Edge cases that only appear in 2008 or March 2020
+- Transaction cost assumptions that are 10x wrong
+
+### **Specific Code That ALWAYS Gets Quality Gate Review:**
+
+**Backtest infrastructure** → `backtest-bias-auditor`, `strategy-logic-auditor`
+**Regime/profile detection** → `backtest-bias-auditor` (look-ahead), `overfitting-detector`
+**Greeks calculations** → `strategy-logic-auditor` (sign errors, calculation bugs)
+**Transaction costs** → `market-microstructure-expert` (reality-check assumptions)
+**Statistical tests** → `statistical-validator` (verify significance)
+**Any P&L calculation** → `strategy-logic-auditor` (accounting errors kill)
+
+**Expect 10-30 issues first pass. This is NORMAL. Fix until clean.**
+
+### **The Quant-Specific Stakes Cascade:**
+
+**If I skip validation in trading code:**
+- Look-ahead bias → fake edge in backtest → capital to losing strategy → **money lost**
+- P&L bugs → false confidence → deploy broken system → **money lost**
+- Greeks errors → wrong position sizing → blown risk limits → **money lost**
+- Cost assumptions wrong → phantom edge → bleed money over time → **money lost**
+
+**Final cascade:** Lose capital → family budget impacted → back to traditional employment
+
+**In quant work: Agent validation isn't bureaucracy. It's how I prevent capital loss.**
 
 ---
 

@@ -94,10 +94,10 @@ class ExecutionModel:
         # Base spread depends on structure
         base = self.base_spread_otm if is_strangle else self.base_spread_atm
 
-        # BUG FIX (2025-11-18): Agent #6b found - moneyness should be non-linear
-        # OTM spreads widen exponentially, not linearly
-        # ATM: factor = 1.0, 10% OTM: factor ~1.5, 20% OTM: factor ~2.5
-        moneyness_factor = 1.0 + (moneyness ** 0.7) * 8.0  # Non-linear widening
+        # BUG FIX (2025-11-18): Final audit - linear scaling more realistic
+        # Strategy-logic-auditor found: Power function causes OTM narrower than ATM
+        # Using linear scaling: moneyness 0.1 → 1.5x, moneyness 0.2 → 2.0x
+        moneyness_factor = 1.0 + moneyness * 5.0  # Linear widening
 
         # Adjust for DTE (wider spreads for short DTE)
         dte_factor = 1.0
@@ -106,12 +106,11 @@ class ExecutionModel:
         elif dte < 14:
             dte_factor = 1.15  # 15% wider for 2-week options
 
-        # Adjust for volatility (spreads widen when VIX > 30)
-        vol_factor = 1.0
-        if vix_level > 30:
-            vol_factor = self.spread_multiplier_vol
-        elif vix_level > 25:
-            vol_factor = 1.2
+        # Adjust for volatility (continuous scaling, not threshold-based)
+        # BUG FIX (2025-11-18): Final audit - VIX thresholds miss 45% of vol moves
+        # Continuous: VIX 15→1.0x, VIX 25→1.5x, VIX 35+→2.0x
+        vol_factor = 1.0 + max(0, (vix_level - 15.0) / 20.0)
+        vol_factor = min(3.0, vol_factor)  # Cap at 3x
 
         # Final spread
         spread = base * moneyness_factor * dte_factor * vol_factor

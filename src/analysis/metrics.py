@@ -326,21 +326,22 @@ class PerformanceMetrics:
         drawdown = cumulative_pnl - running_max
 
         # Find maximum drawdown period
-        max_dd_idx = drawdown.idxmin()
+        # BUG FIX (2025-11-18): Final audit - use argmin() for position, not idxmin()
+        max_dd_position = drawdown.argmin()  # Returns integer position
         max_dd_value = drawdown.min()
 
         # Find when max DD started
         dd_start_idx = None
-        for i in range(max_dd_idx + 1):
-            if cumulative_pnl.iloc[i] == running_max.iloc[max_dd_idx]:
+        for i in range(max_dd_position + 1):
+            if cumulative_pnl.iloc[i] == running_max.iloc[max_dd_position]:
                 dd_start_idx = i
                 break
 
         # Find recovery (if any)
         recovery_idx = None
-        if max_dd_idx < len(cumulative_pnl) - 1:
-            for i in range(max_dd_idx + 1, len(cumulative_pnl)):
-                if cumulative_pnl.iloc[i] >= running_max.iloc[max_dd_idx]:
+        if max_dd_position < len(cumulative_pnl) - 1:
+            for i in range(max_dd_position + 1, len(cumulative_pnl)):
+                if cumulative_pnl.iloc[i] >= running_max.iloc[max_dd_position]:
                     recovery_idx = i
                     break
 

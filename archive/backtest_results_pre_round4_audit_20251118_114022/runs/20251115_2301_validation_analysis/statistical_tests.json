@@ -1,0 +1,128 @@
+{
+  "summary": {
+    "total_trades": 604,
+    "total_pnl": 1030.2000000000526,
+    "mean_pnl_per_trade": 1.7056291390729348,
+    "std_dev": 664.5007806253928,
+    "sharpe_ratio": 0.0025667827469934455,
+    "annualized_sharpe": 0.03143654005356637,
+    "win_rate": 0.4586092715231788,
+    "min_trade": -3490.2,
+    "max_trade": 3455.8
+  },
+  "tests": {
+    "bootstrap": {
+      "mean_pnl_per_trade": 2.2220976821192964,
+      "mean_ci_lower": -52.28195364238401,
+      "mean_ci_upper": 55.990811258278214,
+      "prob_positive_mean": 0.543,
+      "total_pnl": 1342.147000000055,
+      "total_ci_lower": -31578.299999999945,
+      "total_ci_upper": 33818.45000000004,
+      "prob_positive_total": 0.543,
+      "mean_ci_contains_zero": true,
+      "total_ci_contains_zero": true
+    },
+    "sharpe_ratio": {
+      "sharpe": 0.0025667827469934455,
+      "annualized_sharpe": 0.03143654005356637,
+      "t_stat": 0.06303006681869154,
+      "p_value": 0.9497634492121909,
+      "significant_at_0.05": false
+    },
+    "permutation": {
+      "real_total": 1030.2000000000526,
+      "p_value_total": 0.858,
+      "significant_at_0.05": false
+    },
+    "win_rate": {
+      "wins": 277,
+      "total": 604,
+      "win_rate": 0.4586092715231788,
+      "p_value": 0.9810580733344746,
+      "significant_at_0.05": false
+    },
+    "random_chance": {
+      "empirical_std": 664.5007806253928,
+      "prob_random_better": 0.485,
+      "rarity_factor": 2.061855670103093
+    }
+  },
+  "profile_analysis": {
+    "Profile_1_LDG": {
+      "count": 140,
+      "total_pnl": -2862.99999999999,
+      "mean_pnl": -20.44999999999993,
+      "std_pnl": 410.73983988825404,
+      "sharpe": -0.04978820658245268,
+      "win_count": 61,
+      "win_rate": 43.57142857142857,
+      "p_value": 0.558159741100543,
+      "significant": false
+    },
+    "Profile_2_SDG": {
+      "count": 42,
+      "total_pnl": -148.3999999999988,
+      "mean_pnl": -3.5333333333333052,
+      "std_pnl": 737.8314321186258,
+      "sharpe": -0.004788808363974969,
+      "win_count": 15,
+      "win_rate": 35.714285714285715,
+      "p_value": 0.9756868146263864,
+      "significant": false
+    },
+    "Profile_3_CHARM": {
+      "count": 69,
+      "total_pnl": -1050.799999999993,
+      "mean_pnl": -15.228985507246273,
+      "std_pnl": 863.9633307270626,
+      "sharpe": -0.01762688874125065,
+      "win_count": 44,
+      "win_rate": 63.76811594202898,
+      "p_value": 0.8848605537788399,
+      "significant": false
+    },
+    "Profile_4_VANNA": {
+      "count": 151,
+      "total_pnl": 13506.800000000012,
+      "mean_pnl": 89.44900662251663,
+      "std_pnl": 700.1511113969641,
+      "sharpe": 0.1277567158952945,
+      "win_count": 88,
+      "win_rate": 58.27814569536424,
+      "p_value": 0.119761978293664,
+      "significant": false
+    },
+    "Profile_5_SKEW": {
+      "count": 30,
+      "total_pnl": -3337.000000000001,
+      "mean_pnl": -111.23333333333336,
+      "std_pnl": 599.2308115872845,
+      "sharpe": -0.18562685893719438,
+      "win_count": 8,
+      "win_rate": 26.666666666666668,
+      "p_value": 0.32575745121115895,
+      "significant": false
+    },
+    "Profile_6_VOV": {
+      "count": 172,
+      "total_pnl": -5077.399999999978,
+      "mean_pnl": -29.519767441860335,
+      "std_pnl": 690.9663077505717,
+      "sharpe": -0.04272244118235143,
+      "win_count": 61,
+      "win_rate": 35.46511627906977,
+      "p_value": 0.5771188729288181,
+      "significant": false
+    }
+  },
+  "test_results": {
+    "bootstrap_prob_positive": false,
+    "mean_ci_excludes_zero": false,
+    "sharpe_significant": false,
+    "permutation_significant": false,
+    "win_rate_significant": false
+  },
+  "overall_verdict": "NOT STATISTICALLY SIGNIFICANT",
+  "all_tests_pass": false
+}

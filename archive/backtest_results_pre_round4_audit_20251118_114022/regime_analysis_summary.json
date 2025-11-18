@@ -1,0 +1,183 @@
+{
+  "metadata": {
+    "analysis_date": "2025-11-15",
+    "total_trades": 668,
+    "total_profiles": 6,
+    "date_range": "2020-03-30 to 2025-10-13"
+  },
+  "overall_statistics": {
+    "total_pnl": -22877.59999999994,
+    "avg_pnl": -34.247904191616676,
+    "median_pnl": -125.1999999999999,
+    "win_rate": 44.16167664670659,
+    "total_winners": 295,
+    "total_losers": 373
+  },
+  "rv_regime_analysis": {
+    "Low RV": {
+      "trades": 366,
+      "win_rate": 48.08743169398907,
+      "avg_pnl": 6.316393442623023,
+      "total_pnl": 2311.8000000000266,
+      "avg_winner": 485.6977272727274,
+      "avg_loser": -437.74210526315767,
+      "win_loss_ratio": 1.1095522259179071
+    },
+    "Med RV": {
+      "trades": 208,
+      "win_rate": 41.34615384615385,
+      "avg_pnl": -43.627884615384524,
+      "total_pnl": -9074.59999999998,
+      "avg_winner": 642.3000000000003,
+      "avg_loser": -527.150819672131,
+      "win_loss_ratio": 1.2184368799796006
+    },
+    "High RV": {
+      "trades": 94,
+      "win_rate": 35.1063829787234,
+      "avg_pnl": -171.43404255319143,
+      "total_pnl": -16114.799999999996,
+      "avg_winner": 706.6484848484848,
+      "avg_loser": -646.4622950819669,
+      "win_loss_ratio": 1.0931008509303497
+    }
+  },
+  "trend_regime_analysis": {
+    "Choppy": {
+      "trades": 501,
+      "win_rate": 43.91217564870259,
+      "avg_pnl": -34.95648702594801,
+      "total_pnl": -17513.199999999953,
+      "avg_winner": 555.0318181818183,
+      "avg_loser": -496.8690391459073
+    },
+    "Medium": {
+      "trades": 138,
+      "win_rate": 49.275362318840585,
+      "avg_pnl": 16.488405797101517,
+      "total_pnl": 2275.4000000000096,
+      "avg_winner": 588.094117647059,
+      "avg_loser": -538.7857142857139
+    },
+    "Trending": {
+      "trades": 29,
+      "win_rate": 24.137931034482758,
+      "avg_pnl": -263.44137931034476,
+      "total_pnl": -7639.799999999998,
+      "avg_winner": 277.5142857142858,
+      "avg_loser": -435.5636363636364
+    }
+  },
+  "profile_analysis": {
+    "Profile_1_LDG": {
+      "trades": 150,
+      "win_rate": 43.333333333333336,
+      "avg_pnl": -45.646666666666604,
+      "total_pnl": -6846.999999999991,
+      "best_regime_rv": "Low RV",
+      "best_regime_trend": "Trending",
+      "best_regime_wr": 100.0
+    },
+    "Profile_2_SDG": {
+      "trades": 52,
+      "win_rate": 36.53846153846153,
+      "avg_pnl": -61.5846153846153,
+      "total_pnl": -3202.3999999999955,
+      "best_regime_rv": "Med RV",
+      "best_regime_trend": "Medium",
+      "best_regime_wr": 80.0
+    },
+    "Profile_3_CHARM": {
+      "trades": 81,
+      "win_rate": 62.96296296296296,
+      "avg_pnl": 11.725925925926033,
+      "total_pnl": 949.8000000000087,
+      "best_regime_rv": "Med RV",
+      "best_regime_trend": "Choppy",
+      "best_regime_wr": 72.0
+    },
+    "Profile_4_VANNA": {
+      "trades": 162,
+      "win_rate": 58.64197530864198,
+      "avg_pnl": 106.3864197530865,
+      "total_pnl": 17234.600000000013,
+      "best_regime_rv": "High RV",
+      "best_regime_trend": "Medium",
+      "best_regime_wr": 75.0
+    },
+    "Profile_5_SKEW": {
+      "trades": 66,
+      "win_rate": 21.21212121212121,
+      "avg_pnl": -212.12424242424248,
+      "total_pnl": -14000.200000000004,
+      "best_regime_rv": "Med RV",
+      "best_regime_trend": "Medium",
+      "best_regime_wr": 50.0
+    },
+    "Profile_6_VOV": {
+      "trades": 157,
+      "win_rate": 32.48407643312102,
+      "avg_pnl": -108.35923566878971,
+      "total_pnl": -17012.399999999983,
+      "best_regime_rv": "Low RV",
+      "best_regime_trend": "Trending",
+      "best_regime_wr": 100.0
+    }
+  },
+  "regime_combinations": {
+    "Low RV_Choppy": {
+      "trades": 315,
+      "win_rate": 46.98412698412698,
+      "avg_pnl": -9.996825396825319,
+      "total_pnl": -3148.9999999999754
+    },
+    "Low RV_Medium": {
+      "trades": 49,
+      "win_rate": 53.06122448979592,
+      "avg_pnl": 92.98367346938778,
+      "total_pnl": 4556.200000000002
+    },
+    "Low RV_Trending": {
+      "trades": 2,
+      "win_rate": 100.0,
+      "avg_pnl": 452.3000000000002,
+      "total_pnl": 904.6000000000004
+    },
+    "Med RV_Choppy": {
+      "trades": 134,
+      "win_rate": 38.059701492537314,
+      "avg_pnl": -75.4537313432835,
+      "total_pnl": -10110.799999999988
+    },
+    "Med RV_Medium": {
+      "trades": 62,
+      "win_rate": 51.61290322580645,
+      "avg_pnl": 73.02580645161297,
+      "total_pnl": 4527.600000000004
+    },
+    "Med RV_Trending": {
+      "trades": 12,
+      "win_rate": 25.0,
+      "avg_pnl": -290.94999999999993,
+      "total_pnl": -3491.399999999999
+    },
+    "High RV_Choppy": {
+      "trades": 52,
+      "win_rate": 40.38461538461539,
+      "avg_pnl": -81.79615384615379,
+      "total_pnl": -4253.399999999997
+    },
+    "High RV_Medium": {
+      "trades": 27,
+      "win_rate": 37.03703703703704,
+      "avg_pnl": -252.1629629629629,
+      "total_pnl": -6808.399999999998
+    },
+    "High RV_Trending": {
+      "trades": 15,
+      "win_rate": 13.333333333333334,
+      "avg_pnl": -336.8666666666666,
+      "total_pnl": -5052.999999999999
+    }
+  }
+}

@@ -1,0 +1,66 @@
+{
+  "run_id": "20251115_1651_post_bug_fixes",
+  "timestamp": "2025-11-15T16:51:00",
+  "run_type": "backtest",
+  "description": "Post bug fixes: Profile 5 entry timing, Profile 6 IV inversion + compression, RV5 disaster filter",
+  "changes_since_last": [
+    "Profile 5 (SKEW): Added slope_MA20 > 0.005 requirement (only buy dips in uptrends)",
+    "Profile 6 (VOV): Inverted IV_rank condition - sigmoid((0.5 - IV_rank) * 5) instead of (IV_rank - 0.5)",
+    "Profile 6 (VOV): Added compression detection - RV10 < RV20 factor",
+    "All profiles: Added RV5 > 0.22 disaster filter (extreme vol protection)"
+  ],
+  "parent_run": "20251114_infrastructure_fixes",
+  "data_period": "2020-01-02 to 2024-12-31",
+  "total_trades": 604,
+  "total_pnl": 1030.20,
+  "peak_potential": 348896.60,
+  "win_rate": 0.459,
+  "capture_rate": 0.003,
+  "profiles": {
+    "Profile_1_LDG": {
+      "trades": 140,
+      "pnl": -2863.00,
+      "peak_potential": 43950.60,
+      "win_rate": 0.436
+    },
+    "Profile_2_SDG": {
+      "trades": 42,
+      "pnl": -148.40,
+      "peak_potential": 16330.00,
+      "win_rate": 0.357
+    },
+    "Profile_3_CHARM": {
+      "trades": 69,
+      "pnl": -1050.80,
+      "peak_potential": 121552.60,
+      "win_rate": 0.638
+    },
+    "Profile_4_VANNA": {
+      "trades": 151,
+      "pnl": 13506.80,
+      "peak_potential": 79238.40,
+      "win_rate": 0.583
+    },
+    "Profile_5_SKEW": {
+      "trades": 30,
+      "pnl": -3337.00,
+      "peak_potential": 11783.80,
+      "win_rate": 0.267
+    },
+    "Profile_6_VOV": {
+      "trades": 172,
+      "pnl": -5077.40,
+      "peak_potential": 76041.20,
+      "win_rate": 0.355
+    }
+  },
+  "key_findings": [
+    "ALL 6 profiles show high peak potential ($348K total)",
+    "ONLY Profile 4 (VANNA) profitable at exits (+$13.5K)",
+    "Problem is EXITS not ENTRIES (0.30% capture rate)",
+    "5 of 6 profiles lose money with dumb 14-day exits",
+    "Improvement from parent: -$22,878 → +$1,030 (+104%)"
+  ],
+  "validation_status": "Analyzed by run 20251115_2301_validation_analysis",
+  "validation_verdict": "NOT statistically significant (p=0.485), walk-forward FAILED"
+}
