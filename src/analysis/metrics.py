@@ -21,7 +21,7 @@ class PerformanceMetrics:
     Calculate comprehensive performance metrics for portfolio.
     """
 
-    def __init__(self, annual_factor: float = 252):
+    def __init__(self, annual_factor: float = 252, starting_capital: float = 100000.0):
         """
         Initialize metrics calculator.
 
@@ -29,8 +29,12 @@ class PerformanceMetrics:
         -----------
         annual_factor : float
             Trading days per year for annualization (default 252)
+        starting_capital : float
+            Initial portfolio capital for calculating returns (default 100,000)
+            CRITICAL: Must match actual starting capital for accurate metrics
         """
         self.annual_factor = annual_factor
+        self.starting_capital = starting_capital
 
     def calculate_all(
         self,
@@ -107,12 +111,15 @@ class PerformanceMetrics:
         # Convert P&L to returns if needed
         if returns.abs().mean() > 1.0:
             # Input is dollar P&L - convert to returns
-            cumulative_pnl = returns.cumsum()
-            # Calculate returns from cumulative P&L
-            returns_pct = cumulative_pnl.pct_change().dropna()
-            # Replace first NaN with 0 (no prior equity)
-            if len(returns_pct) > 0 and pd.isna(returns_pct.iloc[0]):
-                returns_pct.iloc[0] = returns.iloc[0] / 100000.0  # Normalize by typical capital
+            # FIX BUG-METRICS-001: Use actual starting_capital, not hardcoded 100K
+            cumulative_portfolio_value = self.starting_capital + returns.cumsum()
+            # Calculate percentage returns from portfolio value
+            returns_pct = cumulative_portfolio_value.pct_change().dropna()
+            # First return is (initial + first_pnl) / initial - 1 = first_pnl / initial
+            if len(returns_pct) > 0:
+                # Insert first return manually to avoid NaN
+                first_return = returns.iloc[0] / self.starting_capital
+                returns_pct = pd.concat([pd.Series([first_return], index=[returns.index[0]]), returns_pct])
         else:
             # Input is already percentage returns
             returns_pct = returns
@@ -152,10 +159,12 @@ class PerformanceMetrics:
         """
         # AUTO-DETECT: Convert P&L to returns if needed (same as Sharpe)
         if returns.abs().mean() > 1.0:
-            cumulative_pnl = returns.cumsum()
-            returns_pct = cumulative_pnl.pct_change().dropna()
-            if len(returns_pct) > 0 and pd.isna(returns_pct.iloc[0]):
-                returns_pct.iloc[0] = returns.iloc[0] / 100000.0
+            # FIX BUG-METRICS-002: Use actual starting_capital, not hardcoded 100K
+            cumulative_portfolio_value = self.starting_capital + returns.cumsum()
+            returns_pct = cumulative_portfolio_value.pct_change().dropna()
+            if len(returns_pct) > 0:
+                first_return = returns.iloc[0] / self.starting_capital
+                returns_pct = pd.concat([pd.Series([first_return], index=[returns.index[0]]), returns_pct])
         else:
             returns_pct = returns
 
@@ -236,17 +245,22 @@ class PerformanceMetrics:
         if len(cumulative_pnl) < 2:
             return 0.0
 
-        # Calculate CAGR (percentage return)
-        if cumulative_pnl.iloc[0] == 0:
-            # Can't calculate CAGR from zero starting capital
+        # FIX BUG-METRICS-003: CAGR calculation needs portfolio value, not cumulative P&L
+        # cumulative_pnl is cumulative profit (starts at 0), not portfolio value
+        # Portfolio value = starting_capital + cumulative_pnl
+        starting_value = self.starting_capital
+        ending_value = self.starting_capital + cumulative_pnl.iloc[-1]
+
+        if starting_value <= 0:
             return 0.0
 
-        total_return = cumulative_pnl.iloc[-1] / cumulative_pnl.iloc[0] - 1 if cumulative_pnl.iloc[0] != 0 else 0
+        total_return = (ending_value / starting_value) - 1
         years = len(cumulative_pnl) / self.annual_factor
         cagr = (1 + total_return) ** (1 / years) - 1 if years > 0 else total_return
 
-        # Get max drawdown percentage (not dollars)
-        max_dd_pct = abs(self.max_drawdown_pct(cumulative_pnl))
+        # Get max drawdown percentage (calculate from portfolio value, not cumulative P&L)
+        portfolio_value = self.starting_capital + cumulative_pnl
+        max_dd_pct = abs(self.max_drawdown_pct(portfolio_value))
 
         if max_dd_pct == 0 or np.isnan(max_dd_pct):
             return 0.0
