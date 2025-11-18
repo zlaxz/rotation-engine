@@ -17,8 +17,8 @@ class ExecutionModel:
 
     def __init__(
         self,
-        base_spread_atm: float = 0.03,  # Base ATM spread ($) - SPY penny-wide spreads, 3x for safety
-        base_spread_otm: float = 0.05,  # Base OTM spread ($) - slightly wider
+        base_spread_atm: float = 0.20,  # Base ATM spread ($) - BUG FIX Round 7: was 0.03, too low
+        base_spread_otm: float = 0.30,  # Base OTM spread ($) - BUG FIX Round 7: was 0.05, too low
         spread_multiplier_vol: float = 2.0,  # Spread widening in high vol (2-3x)
         slippage_small: float = 0.10,  # 10% of spread for 1-10 contracts (BUG FIX 2025-11-18)
         slippage_medium: float = 0.25,  # 25% of spread for 11-50 contracts
@@ -115,9 +115,14 @@ class ExecutionModel:
         # Final spread
         spread = base * moneyness_factor * dte_factor * vol_factor
 
-        # Ensure spread is at least some % of mid price (for very cheap options)
-        min_spread = mid_price * 0.05  # At least 5% of mid
-        return max(spread, min_spread)
+        # BUG FIX Round 7: Removed min_spread override that was masking all scaling factors
+        # With increased base spreads (0.20 ATM, 0.30 OTM), calculated spread always exceeds
+        # reasonable minimums. The override was preventing vol/moneyness/DTE scaling from working.
+        # Examples of spread calculation with new bases:
+        #   ATM, VIX 15: $0.20 * 1.0 * 1.0 * 1.0 = $0.20
+        #   ATM, VIX 45: $0.20 * 1.0 * 1.0 * 2.5 = $0.50 (vol scaling works!)
+        #   OTM 15%, VIX 20: $0.30 * 1.75 * 1.0 * 1.25 = $0.66 (moneyness scaling works!)
+        return spread
 
     def get_execution_price(
         self,
