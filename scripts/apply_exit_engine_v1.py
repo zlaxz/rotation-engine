@@ -155,17 +155,23 @@ def main():
         train_pnl = train_results[profile_id]['exit_engine_v1_pnl']
         val_pnl = val_results.get(profile_id, {}).get('exit_engine_v1_pnl', 0)
 
-        # FIXED: Guard division by zero
+        # FIXED Round 4: Remove abs() to preserve degradation sign
+        # When train is negative, improvement shows as negative degradation (correct)
         if abs(train_pnl) < 0.01:
             degradation = 0
         else:
-            degradation = (val_pnl - train_pnl) / abs(train_pnl) * 100
+            degradation = (val_pnl - train_pnl) / train_pnl * 100
 
         print(f"{profile_id:<15} ${train_pnl:>10.0f} ${val_pnl:>10.0f} {degradation:>13.1f}%")
 
     train_total = sum(r['exit_engine_v1_pnl'] for r in train_results.values())
     val_total = sum(r['exit_engine_v1_pnl'] for r in val_results.values())
-    total_deg = (val_total - train_total) / abs(train_total) * 100 if train_total != 0 else 0
+
+    # FIXED Round 4: Remove abs() to preserve degradation sign
+    if abs(train_total) < 0.01:
+        total_deg = 0
+    else:
+        total_deg = (val_total - train_total) / train_total * 100
 
     print('-'*80)
     print(f"{'TOTAL':<15} ${train_total:>10.0f} ${val_total:>10.0f} {total_deg:>13.1f}%")
