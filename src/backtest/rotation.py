@@ -162,8 +162,12 @@ class RotationAllocator:
         total = sum(desirability.values())
 
         if total == 0:
-            # No desirable profiles - return zeros
-            return {k: 0.0 for k in desirability.keys()}
+            # BUG FIX Round 8: No desirable profiles happens during warmup (all profile scores = 0)
+            # Returning all zeros causes zero allocation (portfolio holds cash)
+            # Instead, allocate equally across all profiles (baseline)
+            # This ensures portfolio is always deployed while profiles are warming up
+            equal_weight = 1.0 / len(desirability)
+            return {k: equal_weight for k in desirability.keys()}
 
         return {k: v / total for k, v in desirability.items()}
 
@@ -210,11 +214,7 @@ class RotationAllocator:
             self.max_profile_weight
         )
 
-        # Step 2: Apply minimum threshold (zero out noise)
-        # This happens AFTER capping, and we accept sum < 1.0 (cash position)
-        weight_array[weight_array < self.min_profile_weight] = 0.0
-
-        # Step 3: Apply VIX scaling (reduce exposure in high vol)
+        # Step 2: Apply VIX scaling (reduce exposure in high vol)
         # Scale down ALL weights proportionally, accept sum < 1.0 (hold cash)
         # DO NOT renormalize after scaling - that would violate cap constraint
         if rv20 > self.vix_scale_threshold:
@@ -273,22 +273,25 @@ class RotationAllocator:
             weights[violations] = max_cap
             capped[violations] = True  # Mark as capped
 
-            # Find uncapped profiles with non-zero weight
+            # Find uncapped profiles (doesn't matter if they have weight or not)
             # Must NOT have been capped in this or previous iterations
-            uncapped = ~capped & (weights > 0)
+            # BUG FIX Round 8: Distribute to ALL uncapped, not just those with existing weight
+            # This prevents losing capital when one profile hits cap and others are at zero
+            uncapped = ~capped
 
             if not uncapped.any():
                 # All profiles capped, can't redistribute
                 # Accept sum < 1.0 (holding cash)
                 break
 
-            # Redistribute excess proportionally to uncapped profiles
-            uncapped_sum = weights[uncapped].sum()
-            if uncapped_sum > 0:
-                redistribution = excess * (weights[uncapped] / uncapped_sum)
-                weights[uncapped] += redistribution
+            # Redistribute excess evenly to ALL uncapped profiles
+            # If some have zero weight, they get the redistribution (becomes their initial weight)
+            uncapped_count = uncapped.sum()
+            if uncapped_count > 0:
+                redistribution_per_profile = excess / uncapped_count
+                weights[uncapped] += redistribution_per_profile
             else:
-                # Edge case: uncapped profiles have zero weight
+                # Should not reach here (uncapped.any() was checked above)
                 break
 
         # Ensure sum <= 1.0 (should already be true, but safety check)
@@ -302,7 +305,8 @@ class RotationAllocator:
         self,
         profile_scores: Dict[str, float],
         regime: int,
-        rv20: float
+        rv20: float,
+        is_warmup: bool = False
     ) -> Dict[str, float]:
         """
         Full allocation pipeline: scores → desirability → weights → constraints.
