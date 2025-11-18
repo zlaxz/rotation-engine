@@ -197,7 +197,9 @@ def calculate_vega(S: float, K: float, T: float, r: float, sigma: float) -> floa
         return 0.0
 
     d1 = _calculate_d1(S, K, T, r, sigma)
-    return S * norm.pdf(d1) * np.sqrt(T)
+    # FIXED Round 8: Vega per 1% volatility change (0.01 scaling factor)
+    # Standard: Vega = S × N'(d1) × √T × 0.01
+    return S * norm.pdf(d1) * np.sqrt(T) * 0.01
 
 
 def calculate_theta(

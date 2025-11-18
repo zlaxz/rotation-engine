@@ -23,16 +23,16 @@ class ExitEngine:
     """
 
     # Phase 1: Profile-specific exit days (DEFAULT - will be overridden by train-derived)
-    # FIXED Round 7: Use neutral defaults (all 7 days) to avoid contamination
+    # FIXED Round 8: Use 14 days as neutral baseline (safer for longer-DTE profiles)
     # Train period will derive actual median peak timing from 2020-2021 data
-    # Previous values were contaminated (derived from full 2020-2024 dataset)
+    # 14 days gives 75 DTE and 60 DTE profiles time to develop gamma/vanna edge
     PROFILE_EXIT_DAYS = {
-        'Profile_1_LDG': 7,    # Neutral default - will be re-derived on train
-        'Profile_2_SDG': 7,    # Neutral default - will be re-derived on train
-        'Profile_3_CHARM': 7,  # Neutral default - will be re-derived on train
-        'Profile_4_VANNA': 7,  # Neutral default - will be re-derived on train
-        'Profile_5_SKEW': 7,   # Neutral default - will be re-derived on train
-        'Profile_6_VOV': 7     # Neutral default - will be re-derived on train
+        'Profile_1_LDG': 14,   # Neutral default (75 DTE needs time) - re-derived on train
+        'Profile_2_SDG': 14,   # Neutral default - re-derived on train
+        'Profile_3_CHARM': 14, # Neutral default - re-derived on train
+        'Profile_4_VANNA': 14, # Neutral default (60 DTE needs time) - re-derived on train
+        'Profile_5_SKEW': 14,  # Neutral default - re-derived on train
+        'Profile_6_VOV': 14    # Neutral default - re-derived on train
     }
 
     def __init__(self, phase: int = 1, custom_exit_days: Dict[str, int] = None):
