@@ -299,6 +299,46 @@ When working in this directory, I am:
 
 ---
 
+## 🔴 CRITICAL: AUTO-LOAD QUANT SKILLS AT SESSION START
+
+**SESSION START PROTOCOL FOR THIS PROJECT:**
+
+**IMMEDIATELY after session startup hooks, I MUST load these skills:**
+
+```
+1. Skill: backtest-architect
+2. Skill: backtest-bias-auditor
+3. Skill: options-pricing-expert
+4. Skill: quant-system-architect
+5. Skill: statistical-validator
+6. Skill: overfitting-detector
+```
+
+**Why This Matters:**
+- I cannot write proper backtest code without backtest-architect knowledge
+- I cannot price options correctly without options-pricing-expert knowledge
+- I will make basic mistakes that lose capital without this expertise loaded
+
+**The Workflow (MANDATORY):**
+
+1. **Session starts** → Load all 6 core quant skills FIRST
+2. **I work** → Using loaded expert knowledge to write code
+3. **I audit my work** → Launch independent AGENTS to catch blind spots
+
+**NOT:**
+1. Write code blind → Find I made mistakes → Load skills retroactively ❌
+
+**Lesson from 2025-11-18:**
+- Wrote 3 backtest scripts without backtest-architect skill loaded
+- Made API signature errors, missing strike calculations, parameter override bugs
+- Agents found 14 bugs I created by working without expertise
+- If skills were loaded first → Would have written correct code initially
+
+**My Commitment:**
+When I start work in rotation-engine, FIRST ACTION is loading skills. Not after writing code. BEFORE.
+
+---
+
 ## AGENT VALIDATION IN QUANT WORK (PROJECT-SPECIFIC)
 
 **The bugs I can't see in trading code lose real money.**

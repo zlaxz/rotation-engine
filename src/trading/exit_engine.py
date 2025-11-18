@@ -33,14 +33,23 @@ class ExitEngine:
         'Profile_6_VOV': 7     # Median peak: 6.9 days (vol expansion)
     }
 
-    def __init__(self, phase: int = 1):
+    def __init__(self, phase: int = 1, custom_exit_days: Dict[str, int] = None):
         """
         Initialize exit engine.
 
         Args:
             phase: Exit strategy phase (1 = time-based only)
+            custom_exit_days: Optional dict to override default exit days
+                             (used for validation/test periods with train-derived parameters)
         """
         self.phase = phase
+
+        # Create mutable instance copy that can be overridden
+        self.exit_days = self.PROFILE_EXIT_DAYS.copy()
+
+        # Override with custom exit days if provided
+        if custom_exit_days:
+            self.exit_days.update(custom_exit_days)
 
         if phase != 1:
             raise NotImplementedError(f"Phase {phase} not implemented yet. Only Phase 1 available.")
@@ -67,8 +76,8 @@ class ExitEngine:
         # Calculate days since entry
         days_held = (current_date - trade.entry_date).days
 
-        # Get profile-specific exit day
-        exit_day = self.PROFILE_EXIT_DAYS.get(profile, 14)
+        # Get profile-specific exit day (from instance, not class)
+        exit_day = self.exit_days.get(profile, 14)
 
         # Phase 1: Simple time-based exit
         if days_held >= exit_day:
@@ -78,8 +87,8 @@ class ExitEngine:
 
     def get_exit_day(self, profile: str) -> int:
         """Get the exit day for a given profile."""
-        return self.PROFILE_EXIT_DAYS.get(profile, 14)
+        return self.exit_days.get(profile, 14)
 
     def get_all_exit_days(self) -> Dict[str, int]:
         """Get all profile exit days (for logging/validation)."""
-        return self.PROFILE_EXIT_DAYS.copy()
+        return self.exit_days.copy()

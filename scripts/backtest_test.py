@@ -310,14 +310,27 @@ def run_profile_backtest(
         spot = row['close']
         expiry = get_expiry_for_dte(entry_date, config['dte_target'])
 
-        print(f"ENTRY: {entry_date} | SPY={spot:.2f} | Expiry={expiry}")
+        # Calculate ATM strike (rounded to nearest dollar for SPY options)
+        strike = round(spot)
 
+        print(f"ENTRY: {entry_date} | SPY={spot:.2f} | Strike={strike} | Expiry={expiry}")
+
+        # Build position dict matching TradeTracker API
+        position = {
+            'profile': profile_id,
+            'structure': config['structure'],
+            'strike': strike,
+            'expiry': expiry,
+            'legs': config['legs']
+        }
+
+        # Track trade for 14 days (pass spy_data as required by TradeTracker)
         trade_data = tracker.track_trade(
             entry_date=entry_date,
-            expiry=expiry,
-            legs=config['legs'],
-            spot_at_entry=spot,
-            tracking_days=14
+            position=position,
+            spy_data=spy,
+            max_days=14,
+            regime_data=None
         )
 
         if trade_data:
@@ -465,11 +478,7 @@ def main():
     tracker = TradeTracker(polygon)
 
     # Initialize Exit Engine with locked exit days
-    exit_engine = ExitEngine(phase=1)
-
-    # Override exit days with locked values
-    for profile_id, exit_day in locked_params['exit_days'].items():
-        exit_engine.exit_days[profile_id] = exit_day
+    exit_engine = ExitEngine(phase=1, custom_exit_days=locked_params['exit_days'])
 
     print(f"\n✅ Using locked exit days:")
     for profile_id, exit_day in exit_engine.exit_days.items():
