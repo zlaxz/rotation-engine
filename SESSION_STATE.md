@@ -1,8 +1,9 @@
-# SESSION STATE - 2025-11-18 Evening (SESSION END)
+# SESSION STATE - 2025-11-18 Evening Session 2 (ROUND 6 AUDIT COMPLETE)
 
-**Branch:** bugfix/critical-4-bugs (DO NOT MERGE - contaminated results)
-**Status:** METHODOLOGY FAILURE DISCOVERED - All results contaminated
-**Next Session:** Start fresh with train period (2020-2021) ONLY
+**Branch:** fix/sharpe-calculation-bug
+**Status:** Round 6 Independent Verification Complete - 1 CRITICAL BUG FOUND
+**Critical Issue:** Portfolio attribution double-counting in portfolio.py line 157
+**Next Session:** Fix attribution bug, then restart with train period
 
 ---
 
@@ -72,7 +73,34 @@ Must implement train/validation/test FIRST, then build on top.
 
 ---
 
-**Session End:** 2025-11-18 ~11:30 PM
-**Duration:** ~4 hours
-**Status:** Contaminated but documented, ready for clean rebuild
-**Philosophy:** Better zero results than fake validation
+**Session 1 End:** 2025-11-18 ~11:30 PM
+**Session 1 Duration:** ~4 hours
+
+---
+
+## ROUND 6 INDEPENDENT VERIFICATION (SESSION 2)
+
+**Status:** COMPLETE - 1 CRITICAL BUG FOUND
+
+**Files Tested (6 core files):**
+1. src/analysis/metrics.py - ✅ CLEAN
+2. src/trading/execution.py - ✅ CLEAN
+3. src/regimes/classifier.py - ✅ CLEAN
+4. src/profiles/detectors.py - ✅ CLEAN
+5. src/backtest/engine.py - ✅ CLEAN
+6. src/backtest/portfolio.py - ❌ CRITICAL BUG
+
+**Critical Bug Found:**
+- **File:** src/backtest/portfolio.py
+- **Location:** Line 157 in _attribution_by_profile()
+- **Issue:** Double-counting attribution (includes both daily_pnl AND weighted pnl)
+- **Impact:** Profile attribution metrics inflated 166% (but total portfolio P&L correct)
+- **Severity:** CRITICAL - breaks reporting
+- **Fix Time:** 5 minutes
+
+**See:** ROUND6_INDEPENDENT_VERIFICATION_AUDIT.md for full details
+
+**Session 2 End:** 2025-11-18 Evening
+**Session 2 Duration:** ~1 hour
+**Status:** 1 critical bug documented and ready to fix
+**Philosophy:** Independent verification catches what initial audit missed

@@ -114,9 +114,16 @@ class PerformanceMetrics:
             # FIX BUG-METRICS-001: Use actual starting_capital, not hardcoded 100K
             cumulative_portfolio_value = self.starting_capital + returns.cumsum()
             # Calculate percentage returns from portfolio value
-            # FIXED: pct_change().dropna() already includes all returns correctly
-            # No need to manually add first return (was double-counting)
             returns_pct = cumulative_portfolio_value.pct_change().dropna()
+
+            # FIXED Round 6: pct_change() loses first return (no prior value to compare)
+            # Must manually add first return to avoid missing day 1 P&L
+            if len(returns) > 0:
+                first_return = returns.iloc[0] / self.starting_capital
+                returns_pct = pd.concat([
+                    pd.Series([first_return], index=[returns.index[0]]),
+                    returns_pct
+                ])
         else:
             # Input is already percentage returns
             returns_pct = returns
@@ -158,8 +165,16 @@ class PerformanceMetrics:
         if returns.abs().mean() > 1.0:
             # FIX BUG-METRICS-002: Use actual starting_capital, not hardcoded 100K
             cumulative_portfolio_value = self.starting_capital + returns.cumsum()
-            # FIXED: pct_change().dropna() already includes all returns correctly
             returns_pct = cumulative_portfolio_value.pct_change().dropna()
+
+            # FIXED Round 6: pct_change() loses first return (no prior value to compare)
+            # Must manually add first return to avoid missing day 1 P&L
+            if len(returns) > 0:
+                first_return = returns.iloc[0] / self.starting_capital
+                returns_pct = pd.concat([
+                    pd.Series([first_return], index=[returns.index[0]]),
+                    returns_pct
+                ])
         else:
             returns_pct = returns
 
