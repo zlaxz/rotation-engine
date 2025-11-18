@@ -136,8 +136,8 @@ def load_spy_data() -> pd.DataFrame:
 
     spy['MA20'] = spy['close'].shift(1).rolling(20).mean()
     spy['MA50'] = spy['close'].shift(1).rolling(50).mean()
-    spy['slope_MA20'] = spy['MA20'].pct_change(20)
-    spy['slope_MA50'] = spy['MA50'].pct_change(50)
+    spy['slope_MA20'] = spy['MA20'].pct_change(20).shift(1)  # FIXED: Shift after pct_change
+    spy['slope_MA50'] = spy['MA50'].pct_change(50).shift(1)  # FIXED: Shift after pct_change
 
     # Realized volatility (annualized)
     # Use shifted returns so RV doesn't include today's move
@@ -314,11 +314,12 @@ def run_profile_backtest(
     trades = []
     last_entry_date = None
 
-    for idx in range(60, len(spy)):
+    # CRITICAL: Stop before last row to allow next-day execution
+    for idx in range(60, len(spy) - 1):
         row = spy.iloc[idx]
-        entry_date = row['date']
+        signal_date = row['date']
 
-        if last_entry_date and (entry_date - last_entry_date).days < min_days_between_trades:
+        if last_entry_date and (signal_date - last_entry_date).days < min_days_between_trades:
             continue
 
         try:
@@ -331,7 +332,11 @@ def run_profile_backtest(
         # NOTE: Disaster filter removed (was derived from contaminated full dataset)
         # Using train-derived parameters only
 
-        spot = row['close']
+        # Entry triggered at end of day idx
+        # Execute at open of next day (idx + 1)
+        next_day = spy.iloc[idx + 1]
+        entry_date = next_day['date']
+        spot = next_day['open']  # FIXED: Use next day's open, not current close
         expiry = get_expiry_for_dte(entry_date, config['dte_target'])
 
         # Calculate strike based on profile structure

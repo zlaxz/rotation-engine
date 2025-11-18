@@ -114,12 +114,9 @@ class PerformanceMetrics:
             # FIX BUG-METRICS-001: Use actual starting_capital, not hardcoded 100K
             cumulative_portfolio_value = self.starting_capital + returns.cumsum()
             # Calculate percentage returns from portfolio value
+            # FIXED: pct_change().dropna() already includes all returns correctly
+            # No need to manually add first return (was double-counting)
             returns_pct = cumulative_portfolio_value.pct_change().dropna()
-            # First return is (initial + first_pnl) / initial - 1 = first_pnl / initial
-            if len(returns_pct) > 0:
-                # Insert first return manually to avoid NaN
-                first_return = returns.iloc[0] / self.starting_capital
-                returns_pct = pd.concat([pd.Series([first_return], index=[returns.index[0]]), returns_pct])
         else:
             # Input is already percentage returns
             returns_pct = returns
@@ -161,10 +158,8 @@ class PerformanceMetrics:
         if returns.abs().mean() > 1.0:
             # FIX BUG-METRICS-002: Use actual starting_capital, not hardcoded 100K
             cumulative_portfolio_value = self.starting_capital + returns.cumsum()
+            # FIXED: pct_change().dropna() already includes all returns correctly
             returns_pct = cumulative_portfolio_value.pct_change().dropna()
-            if len(returns_pct) > 0:
-                first_return = returns.iloc[0] / self.starting_capital
-                returns_pct = pd.concat([pd.Series([first_return], index=[returns.index[0]]), returns_pct])
         else:
             returns_pct = returns
 
@@ -355,7 +350,7 @@ class PerformanceMetrics:
 
         return {
             'max_dd_value': max_dd_value,
-            'max_dd_date': cumulative_pnl.index[max_dd_idx] if hasattr(cumulative_pnl.index[max_dd_idx], 'date') else max_dd_idx,
+            'max_dd_date': cumulative_pnl.index[max_dd_position] if hasattr(cumulative_pnl.index[max_dd_position], 'date') else max_dd_position,
             'dd_recovery_days': recovery_days,
             'dd_recovered': recovered,
             'avg_drawdown': drawdown[drawdown < 0].mean(),

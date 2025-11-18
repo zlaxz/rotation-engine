@@ -222,12 +222,11 @@ class TradeTracker:
         exit_snapshot = daily_path[-1]
         days_held = len(daily_path) - 1
 
-        # Find day of peak
-        day_of_peak = 0
-        for i, day in enumerate(daily_path):
-            if day['mtm_pnl'] == peak_pnl:
-                day_of_peak = i
-                break
+        # Find day of peak (FIXED: use max() to avoid floating-point equality issues)
+        if daily_path:
+            day_of_peak = max(range(len(daily_path)), key=lambda i: daily_path[i]['mtm_pnl'])
+        else:
+            day_of_peak = 0
 
         # Calculate path statistics
         pnl_series = [d['mtm_pnl'] for d in daily_path]
@@ -236,10 +235,12 @@ class TradeTracker:
 
         # FIXED: Handle division by zero and negative peak scenarios
         if peak_pnl > 0:
+            # Winning trade: standard percentage
             pct_captured = float(exit_snapshot['mtm_pnl'] / peak_pnl * 100)
         elif peak_pnl < 0:
-            # Trade never went positive - losing trade throughout
-            pct_captured = 0.0
+            # Losing trade: calculate recovery percentage
+            # How much of the loss was recovered from worst point?
+            pct_captured = float((exit_snapshot['mtm_pnl'] - peak_pnl) / abs(peak_pnl) * 100)
         else:
             # peak_pnl == 0 (broke even at best)
             pct_captured = 0.0
