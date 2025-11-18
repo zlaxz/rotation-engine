@@ -157,16 +157,26 @@ class TradeTracker:
                 opt_type = leg['type']
                 qty = leg['qty']
 
-                price = self.polygon.get_option_price(
-                    day_date, position['strike'], position['expiry'], opt_type, 'mid'
-                )
+                # FIXED: Use consistent ask/bid pricing (same as entry)
+                # Long positions would exit at bid (selling), short at ask (buying to cover)
+                if qty > 0:
+                    # Long: exit at bid (we're selling)
+                    price = self.polygon.get_option_price(
+                        day_date, position['strike'], position['expiry'], opt_type, 'bid'
+                    )
+                else:
+                    # Short: exit at ask (we're buying to cover)
+                    price = self.polygon.get_option_price(
+                        day_date, position['strike'], position['expiry'], opt_type, 'ask'
+                    )
+
                 if price is None:
                     # If we can't get price, stop tracking
                     break
 
                 current_prices[opt_type] = price
-                # MTM: value if closed now (pay spread on exit)
-                exit_value = qty * (price - (spread if qty > 0 else -spread)) * 100
+                # MTM: value if closed now at bid/ask (no spread adjustment needed - already in price)
+                exit_value = qty * price * 100
                 mtm_value += exit_value
 
             if not current_prices:
@@ -224,13 +234,23 @@ class TradeTracker:
         pnl_volatility = float(np.std(pnl_series)) if len(pnl_series) > 1 else 0.0
         positive_days = sum(1 for pnl in pnl_series if pnl > 0)
 
+        # FIXED: Handle division by zero and negative peak scenarios
+        if peak_pnl > 0:
+            pct_captured = float(exit_snapshot['mtm_pnl'] / peak_pnl * 100)
+        elif peak_pnl < 0:
+            # Trade never went positive - losing trade throughout
+            pct_captured = 0.0
+        else:
+            # peak_pnl == 0 (broke even at best)
+            pct_captured = 0.0
+
         exit_analytics = {
             'exit_date': exit_snapshot['date'],
             'days_held': days_held,
             'final_pnl': exit_snapshot['mtm_pnl'],
             'peak_pnl': float(peak_pnl),
             'max_drawdown': float(max_dd),
-            'pct_of_peak_captured': float((exit_snapshot['mtm_pnl'] / peak_pnl * 100) if peak_pnl > 0 else 0),
+            'pct_of_peak_captured': pct_captured,
             'day_of_peak': day_of_peak,
             'days_after_peak': days_held - day_of_peak,
             'peak_to_exit_decay': float(exit_snapshot['mtm_pnl'] - peak_pnl),
@@ -267,16 +287,23 @@ class TradeTracker:
         # Estimate risk-free rate and volatility
         r = 0.04  # 4% risk-free rate
 
-        # Estimate IV from option price (simple approach)
-        iv = 0.20  # Default
+        # Estimate IV from option price (improved heuristic)
+        # FIXED: Better IV estimation using Brenner-Subrahmanyam approximation
+        iv = 0.20  # Default fallback
         for leg in legs:
             opt_type = leg['type']
             if opt_type in prices:
                 price = prices[opt_type]
-                # Back out IV from price (simplified - just use ATM vol estimate)
-                if abs(strike - spot) / spot < 0.02:  # Near ATM
-                    iv = max(0.10, price / spot * np.sqrt(365 / dte) * 2)
-                    break
+                moneyness = abs(strike - spot) / spot
+
+                # Brenner-Subrahmanyam approximation for ATM options
+                if moneyness < 0.05:  # Near ATM
+                    iv = price / spot * np.sqrt(2 * np.pi / (dte / 365.0))
+                    iv = np.clip(iv, 0.05, 2.0)  # Realistic bounds: 5% to 200%
+                else:  # OTM options - use conservative estimate
+                    iv = price / spot * np.sqrt(2 * np.pi / (dte / 365.0)) * 1.5
+                    iv = np.clip(iv, 0.05, 3.0)
+                break
 
         # Calculate Greeks for each leg and sum
         CONTRACT_MULTIPLIER = 100  # FIX BUG-002: Options represent 100 shares per contract

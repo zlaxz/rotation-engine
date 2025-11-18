@@ -89,9 +89,16 @@ def load_train_params() -> Dict:
 def load_spy_data() -> pd.DataFrame:
     """Load SPY minute data and aggregate to daily with derived features
 
-    ENFORCES VALIDATION PERIOD: 2022-01-01 to 2023-12-31 ONLY
+    CRITICAL: Load warmup period BEFORE validation start
+    Then filter to validation period AFTER feature calculation
     """
-    print("Loading SPY data (VALIDATION PERIOD ONLY: 2022-2023)...")
+    # Warmup period: 60 trading days before validation start
+    WARMUP_DAYS = 60
+    warmup_start = VALIDATION_START - timedelta(days=90)
+
+    print(f"Loading SPY data with warmup period...")
+    print(f"  Warmup:     {warmup_start} to {VALIDATION_START}")
+    print(f"  Validation: {VALIDATION_START} to {VALIDATION_END}")
 
     spy_files = sorted(glob.glob('/Volumes/VelocityData/velocity_om/parquet/stock/SPY/*.parquet'))
     spy_data = []
@@ -101,8 +108,8 @@ def load_spy_data() -> pd.DataFrame:
         if len(df) > 0:
             file_date = pd.to_datetime(df['ts'].iloc[0]).date()
 
-            # ENFORCE VALIDATION PERIOD: Skip data outside validation boundaries
-            if file_date < VALIDATION_START or file_date > VALIDATION_END:
+            # Load warmup + validation period
+            if file_date < warmup_start or file_date > VALIDATION_END:
                 continue
 
             spy_data.append({
@@ -115,42 +122,58 @@ def load_spy_data() -> pd.DataFrame:
             })
 
     spy = pd.DataFrame(spy_data)
-
-    # Verify validation period enforcement
-    actual_start = spy['date'].min()
-    actual_end = spy['date'].max()
-
-    print(f"✅ VALIDATION PERIOD ENFORCED")
-    print(f"   Expected: {VALIDATION_START} to {VALIDATION_END}")
-    print(f"   Actual:   {actual_start} to {actual_end}")
-
-    if actual_start < VALIDATION_START or actual_end > VALIDATION_END:
-        raise ValueError(f"DATA LEAK DETECTED: Data outside validation period!")
+    spy = spy.sort_values('date').reset_index(drop=True)
 
     # Calculate derived features
-    spy['return_1d'] = spy['close'].pct_change()
-    spy['return_5d'] = spy['close'].pct_change(5)
-    spy['return_10d'] = spy['close'].pct_change(10)
-    spy['return_20d'] = spy['close'].pct_change(20)
+    # CRITICAL: Shift by 1 to avoid look-ahead bias
+    # At market open on day T, we only know day T-1's close
+    # Entry conditions evaluate features, then enter at day T open (simulated as close)
 
-    spy['MA20'] = spy['close'].rolling(20).mean()
-    spy['MA50'] = spy['close'].rolling(50).mean()
+    spy['return_1d'] = spy['close'].pct_change().shift(1)
+    spy['return_5d'] = spy['close'].pct_change(5).shift(1)
+    spy['return_10d'] = spy['close'].pct_change(10).shift(1)
+    spy['return_20d'] = spy['close'].pct_change(20).shift(1)
+
+    spy['MA20'] = spy['close'].shift(1).rolling(20).mean()
+    spy['MA50'] = spy['close'].shift(1).rolling(50).mean()
     spy['slope_MA20'] = spy['MA20'].pct_change(20)
     spy['slope_MA50'] = spy['MA50'].pct_change(50)
 
     # Realized volatility (annualized)
+    # Use shifted returns so RV doesn't include today's move
     spy['RV5'] = spy['return_1d'].rolling(5).std() * np.sqrt(252)
     spy['RV10'] = spy['return_1d'].rolling(10).std() * np.sqrt(252)
     spy['RV20'] = spy['return_1d'].rolling(20).std() * np.sqrt(252)
 
     # Average True Range
     spy['HL'] = spy['high'] - spy['low']
-    spy['ATR5'] = spy['HL'].rolling(5).mean()
-    spy['ATR10'] = spy['HL'].rolling(10).mean()
+    spy['ATR5'] = spy['HL'].shift(1).rolling(5).mean()
+    spy['ATR10'] = spy['HL'].shift(1).rolling(10).mean()
 
-    spy['slope'] = spy['close'].pct_change(20)
+    spy['slope'] = spy['close'].pct_change(20).shift(1)
 
-    print(f"Loaded {len(spy)} days from {spy['date'].min()} to {spy['date'].max()}\n")
+    # CRITICAL: Filter to validation period AFTER calculating features
+    spy_with_warmup = spy.copy()
+    spy = spy[spy['date'] >= VALIDATION_START].reset_index(drop=True)
+
+    # Verify validation period enforcement
+    actual_start = spy['date'].min()
+    actual_end = spy['date'].max()
+
+    print(f"\n✅ VALIDATION PERIOD ENFORCED")
+    print(f"   Expected: {VALIDATION_START} to {VALIDATION_END}")
+    print(f"   Actual:   {actual_start} to {actual_end}")
+    print(f"   Warmup days used: {len(spy_with_warmup) - len(spy)}")
+
+    if actual_start != VALIDATION_START or actual_end > VALIDATION_END:
+        raise ValueError(f"DATA LEAK DETECTED: Data outside validation period!")
+
+    # Verify warmup provided clean features
+    first_ma50 = spy['MA50'].iloc[0]
+    if pd.isna(first_ma50):
+        raise ValueError(f"WARMUP INSUFFICIENT: MA50 still NaN at validation period start!")
+
+    print(f"   First MA50 value: {first_ma50:.2f} (clean)\n")
 
     return spy
 
@@ -237,13 +260,31 @@ def get_profile_configs() -> Dict:
 
 
 def get_expiry_for_dte(entry_date: date, dte_target: int) -> date:
-    """Calculate appropriate expiry date for target DTE"""
+    """
+    Calculate appropriate expiry date for target DTE
+
+    SPY has weekly expirations (every Friday).
+    Find Friday closest to entry_date + dte_target days.
+    """
     target_date = entry_date + timedelta(days=dte_target)
-    first_day = date(target_date.year, target_date.month, 1)
-    days_to_friday = (4 - first_day.weekday()) % 7
-    first_friday = first_day + timedelta(days=days_to_friday)
-    third_friday = first_friday + timedelta(days=14)
-    return third_friday
+
+    # Find next Friday from target date
+    days_to_friday = (4 - target_date.weekday()) % 7
+    if days_to_friday == 0:
+        # Target is Friday
+        expiry = target_date
+    else:
+        # Find nearest Friday (could be before or after target)
+        next_friday = target_date + timedelta(days=days_to_friday)
+        prev_friday = next_friday - timedelta(days=7)
+
+        # Choose Friday closer to target
+        if abs((next_friday - target_date).days) < abs((prev_friday - target_date).days):
+            expiry = next_friday
+        else:
+            expiry = prev_friday
+
+    return expiry
 
 
 def run_profile_backtest(
@@ -283,18 +324,23 @@ def run_profile_backtest(
         try:
             if not config['entry_condition'](row):
                 continue
-        except Exception:
+        except (KeyError, TypeError) as e:
+            # Skip if derived features not available
             continue
 
-        # DISASTER FILTER
-        if row.get('RV5', 0) > 0.22:
-            continue
+        # NOTE: Disaster filter removed (was derived from contaminated full dataset)
+        # Using train-derived parameters only
 
         spot = row['close']
         expiry = get_expiry_for_dte(entry_date, config['dte_target'])
 
-        # Calculate ATM strike (rounded to nearest dollar for SPY options)
-        strike = round(spot)
+        # Calculate strike based on profile structure
+        if profile_id == 'Profile_5_SKEW':
+            # 5% OTM put: strike below spot
+            strike = round(spot * 0.95)
+        else:
+            # ATM for all other profiles
+            strike = round(spot)
 
         print(f"ENTRY: {entry_date} | SPY={spot:.2f} | Strike={strike} | Expiry={expiry}")
 
@@ -446,7 +492,9 @@ def main():
     tracker = TradeTracker(polygon)
 
     # Initialize Exit Engine with train-derived exit days
-    exit_engine = ExitEngine(phase=1, custom_exit_days=train_params['exit_days'])
+    # FIXED: Ensure exit days are integers (JSON may load as floats)
+    exit_days_int = {k: int(v) for k, v in train_params['exit_days'].items()}
+    exit_engine = ExitEngine(phase=1, custom_exit_days=exit_days_int)
 
     print(f"\n✅ Using train-derived exit days:")
     for profile_id, exit_day in exit_engine.exit_days.items():

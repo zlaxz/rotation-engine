@@ -1,0 +1,610 @@
+{
+  "audit_metadata": {
+    "audit_round": "Round 4 - Complete System Audit",
+    "audit_date": "2025-11-18",
+    "auditor": "market-microstructure-expert agent",
+    "files_audited": [
+      "scripts/backtest_train.py",
+      "scripts/backtest_validation.py",
+      "scripts/backtest_test.py",
+      "src/analysis/trade_tracker.py",
+      "src/trading/execution.py"
+    ],
+    "audit_scope": "Transaction cost realism validation - execution costs, commissions, spreads, slippage, fees",
+    "capital_at_risk": "REAL MONEY",
+    "verdict": "MIXED - Some costs realistic, CRITICAL issues found"
+  },
+
+  "executive_summary": {
+    "overall_grade": "C+ (70/100)",
+    "deployment_ready": false,
+    "critical_issues": 3,
+    "high_severity_issues": 4,
+    "medium_severity_issues": 2,
+    "low_severity_issues": 1,
+
+    "top_3_findings": [
+      "CRITICAL: TradeTracker hardcoded costs don't match ExecutionModel ($2.60 commission vs $0.65 per contract)",
+      "CRITICAL: TradeTracker hardcoded spread ($0.03) doesn't vary with moneyness, DTE, or volatility",
+      "CRITICAL: Delta hedging costs not implemented anywhere - significant cost drag missing"
+    ],
+
+    "estimated_cost_underestimation": {
+      "commission_mismatch": "Underestimated by 2x (using $2.60 total instead of $0.65/contract * 2 legs = $1.30 PLUS fees)",
+      "spread_underestimation": "Underestimated by 1.5-3x during high vol",
+      "missing_delta_hedging": "Unknown - NOT MODELED AT ALL",
+      "total_annual_impact": "-5% to -15% on returns (rough estimate)"
+    }
+  },
+
+  "detailed_findings": {
+
+    "1_commission_structure": {
+      "severity": "CRITICAL",
+      "status": "INCONSISTENT AND INCOMPLETE",
+
+      "reality_check": {
+        "retail_commissions": {
+          "tastyworks": "$0.00 open, $10.00 close per leg (max $10 per order)",
+          "td_ameritrade": "$0.65 per contract",
+          "interactive_brokers": "$0.65 per contract",
+          "standard_assumption": "$0.65 per contract BOTH sides"
+        },
+        "regulatory_fees_per_contract": {
+          "OCC_fee": "$0.055",
+          "FINRA_TAFC_fee": "$0.00205 (short sales only)",
+          "SEC_fee": "$0.00182 per $1000 premium (short sales)",
+          "exchange_fees": "$0.02 to $0.05 (varies by exchange)"
+        },
+        "total_realistic_cost_per_contract": "$0.65 commission + $0.055 OCC + ~$0.05 exchange = $0.755 per contract per side"
+      },
+
+      "code_implementation": {
+        "execution_model": {
+          "file": "src/trading/execution.py",
+          "line": 28,
+          "value": "$0.65 per contract",
+          "includes_fees": true,
+          "implementation": "get_commission_cost() includes OCC ($0.055) and FINRA ($0.00205)",
+          "verdict": "CORRECT - fees are modeled"
+        },
+        "trade_tracker": {
+          "file": "src/analysis/trade_tracker.py",
+          "line": 76,
+          "value": "$2.60 per trade (hardcoded)",
+          "includes_fees": "UNKNOWN - no fee breakdown",
+          "implementation": "Hardcoded constant, not using ExecutionModel",
+          "verdict": "INCONSISTENT - doesn't match ExecutionModel, unclear if fees included"
+        }
+      },
+
+      "issues_found": [
+        "TradeTracker uses $2.60 flat per trade, ExecutionModel uses $0.65/contract + fees",
+        "For 2-leg straddle: ExecutionModel = 2 * ($0.65 + $0.055 + ~$0.05) = ~$1.51 ENTRY + ~$1.51 EXIT = $3.02 total",
+        "TradeTracker applies $2.60 entry + $2.60 exit = $5.20 total",
+        "TradeTracker is HIGHER but may still be underestimating if using retail $0.00 open / $10 close model",
+        "Lack of consistency means one of them is WRONG"
+      ],
+
+      "impact_on_returns": {
+        "direction": "MIXED - TradeTracker higher than ExecutionModel but still may underestimate retail costs",
+        "magnitude": "Moderate - $2-3 per round trip difference",
+        "annual_impact": "-1% to -2% on strategy returns"
+      },
+
+      "recommendation": "UNIFY commission model across all code. Use ExecutionModel.get_commission_cost() everywhere. Validate against actual broker fee schedule (Tastyworks $10 close is common)."
+    },
+
+    "2_bid_ask_spreads": {
+      "severity": "CRITICAL",
+      "status": "PARTIALLY REALISTIC BUT HARDCODED IN BACKTEST",
+
+      "reality_check": {
+        "spy_options_actual_spreads": {
+          "ATM_normal_vol": "$0.01 to $0.05 (penny-wide markets)",
+          "ATM_high_vol_VIX_30_plus": "$0.10 to $0.30 (3-5x wider)",
+          "OTM_5pct": "$0.05 to $0.15 normal, $0.20 to $0.50 high vol",
+          "short_DTE_0_7_days": "$0.05 to $0.20 (wider)",
+          "long_DTE_60_plus": "$0.03 to $0.10 (tighter)"
+        },
+        "typical_straddle_cost": {
+          "normal_vol": "$0.03 to $0.10 per leg = $0.06 to $0.20 total",
+          "high_vol": "$0.15 to $0.50 per leg = $0.30 to $1.00 total"
+        }
+      },
+
+      "code_implementation": {
+        "execution_model": {
+          "file": "src/trading/execution.py",
+          "lines": "20-120",
+          "base_spread_atm": "$0.03",
+          "base_spread_otm": "$0.05",
+          "adjustments": [
+            "Moneyness: linear scaling (1.0 + moneyness * 5.0)",
+            "DTE: 1.3x for <7 days, 1.15x for <14 days",
+            "VIX: continuous scaling from 1.0x at VIX=15 to 2.0x at VIX=35+"
+          ],
+          "minimum_spread": "5% of mid price",
+          "verdict": "REASONABLE MODEL - captures moneyness, DTE, and vol effects"
+        },
+        "trade_tracker": {
+          "file": "src/analysis/trade_tracker.py",
+          "line": 77,
+          "value": "$0.03 HARDCODED",
+          "adjustments": "NONE - does not vary with market conditions",
+          "implementation": "Uses ask/bid from Polygon data PLUS hardcoded $0.03 spread",
+          "verdict": "WRONG - hardcoded spread ignores actual market spreads AND duplicates Polygon bid/ask"
+        }
+      },
+
+      "issues_found": [
+        "TradeTracker hardcodes $0.03 spread on TOP of Polygon bid/ask prices",
+        "This DOUBLE-COUNTS spread: Polygon already has bid/ask embedded",
+        "TradeTracker spread doesn't widen during high vol (March 2020 would be same as calm periods)",
+        "ExecutionModel has sophisticated spread model but ISN'T USED in backtests",
+        "Backtests use TradeTracker, so they get wrong spreads"
+      ],
+
+      "spread_validation_analysis": {
+        "march_2020_crisis": {
+          "vix_peak": "85",
+          "expected_spread_widening": "5-10x vs normal",
+          "trade_tracker_spread": "$0.03 (no widening)",
+          "actual_spread": "$0.50 to $2.00 per leg",
+          "underestimation": "10-60x during crisis"
+        },
+        "normal_2024_conditions": {
+          "vix_range": "12-20",
+          "expected_spread": "$0.01 to $0.05 ATM",
+          "trade_tracker_spread": "$0.03 (reasonable)",
+          "verdict": "Acceptable during normal conditions"
+        }
+      },
+
+      "impact_on_returns": {
+        "normal_conditions": "Roughly correct (within 50%)",
+        "high_vol_periods": "SEVERELY underestimated by 5-10x",
+        "march_2020_backtest": "Returns massively inflated - spread should be $1-2 per leg, not $0.03",
+        "annual_impact": "-3% to -8% depending on vol regime frequency"
+      },
+
+      "recommendation": "CRITICAL FIX: TradeTracker must use ExecutionModel.get_spread() based on actual market conditions (VIX, moneyness, DTE). Remove hardcoded $0.03. Polygon prices ALREADY include bid/ask - don't add spread on top."
+    },
+
+    "3_slippage_modeling": {
+      "severity": "HIGH",
+      "status": "SOPHISTICATED MODEL EXISTS BUT NOT USED IN BACKTESTS",
+
+      "reality_check": {
+        "market_orders": {
+          "small_size_1_10_contracts": "10-20% of half-spread (cross the spread partially)",
+          "medium_size_10_50": "30-50% of half-spread",
+          "large_size_50_plus": "Full spread + market impact"
+        },
+        "limit_orders": {
+          "fill_probability": "50-80% at mid",
+          "adverse_selection": "Filled when market moving against you",
+          "time_cost": "May miss trade entirely"
+        }
+      },
+
+      "code_implementation": {
+        "execution_model": {
+          "file": "src/trading/execution.py",
+          "implementation": "Size-based slippage: 10% (small), 25% (medium), 50% (large) of half-spread",
+          "included_in": "get_execution_price() method",
+          "verdict": "REALISTIC MODEL"
+        },
+        "trade_tracker": {
+          "file": "src/analysis/trade_tracker.py",
+          "lines": "83-94 (entry), 160-171 (exit)",
+          "entry_implementation": "Uses Polygon ask (long) or bid (short) - spread already included",
+          "exit_implementation": "Uses mid price MINUS hardcoded spread - NO size-based slippage",
+          "verdict": "NO SLIPPAGE MODELING on exit"
+        }
+      },
+
+      "issues_found": [
+        "ExecutionModel has slippage model, TradeTracker doesn't use it",
+        "Entry: TradeTracker uses ask/bid so spread is captured, but no additional slippage",
+        "Exit: TradeTracker uses mid ± hardcoded spread, no size-based adjustments",
+        "Large orders (if ever tested) would show unrealistic fills"
+      ],
+
+      "impact_on_returns": {
+        "current_position_sizes": "Minimal - 1-2 contract trades have low slippage",
+        "if_scaling_to_10_plus_contracts": "Severe underestimation - missing 25-50% of half-spread",
+        "annual_impact_current_size": "-0.5% to -1%",
+        "annual_impact_if_scaled": "-3% to -7%"
+      },
+
+      "recommendation": "Add size-based slippage to TradeTracker exit logic. Use ExecutionModel.get_execution_price() with quantity parameter."
+    },
+
+    "4_delta_hedging_costs": {
+      "severity": "CRITICAL",
+      "status": "NOT IMPLEMENTED ANYWHERE",
+
+      "reality_check": {
+        "strategies_requiring_hedging": [
+          "Profile 1: Long ATM Straddle (high gamma, needs frequent hedging)",
+          "Profile 3: Short ATM Straddle (DEFINITELY needs delta hedging)",
+          "Profile 4: Long ATM Call (may hedge delta)"
+        ],
+        "es_futures_costs_per_round_trip": {
+          "commission": "$2.50 (typical)",
+          "bid_ask_spread": "0.25 points = $12.50",
+          "half_spread_one_way": "$6.25",
+          "total_one_way_cost": "$2.50 + $6.25 = $8.75 per contract"
+        },
+        "hedging_frequency_assumptions": {
+          "gamma_scalping_strategy": "Rebalance at ±10-20 delta = 5-20 times per position",
+          "static_hedge": "Rebalance daily = 1-14 times per position",
+          "cost_per_position": "$8.75 * 5 to 20 rebalances = $43.75 to $175 per position"
+        }
+      },
+
+      "code_implementation": {
+        "execution_model": {
+          "file": "src/trading/execution.py",
+          "method": "get_delta_hedge_cost()",
+          "implementation": "ES commission ($2.50) + half-spread ($6.25) + market impact (10-25% for large orders)",
+          "verdict": "REALISTIC MODEL"
+        },
+        "trade_tracker": {
+          "implementation": "NONE - delta hedging costs not modeled at all",
+          "greeks_calculated": "Yes - position delta is tracked",
+          "hedging_logic": "MISSING - no rebalancing modeled",
+          "verdict": "MAJOR GAP"
+        },
+        "backtest_scripts": {
+          "train_validation_test": "No delta hedging logic anywhere",
+          "verdict": "MISSING CRITICAL COST COMPONENT"
+        }
+      },
+
+      "issues_found": [
+        "Profiles with high gamma (1, 3, 6) require delta hedging in reality",
+        "No hedging costs modeled = P&L massively overstated",
+        "Profile 3 (short straddle) is UNDELTAHEDGED in backtest = taking directional risk",
+        "Real implementation would need delta hedging = significant cost drag"
+      ],
+
+      "impact_on_returns": {
+        "profile_1_ldg": {
+          "gamma": "High",
+          "estimated_rebalances": "10-15 per trade",
+          "cost_per_trade": "$87.50 to $131.25",
+          "current_avg_pnl": "Unknown without running backtest",
+          "impact": "Could turn profitable trades into losers"
+        },
+        "profile_3_charm": {
+          "gamma": "Very high (short straddle)",
+          "estimated_rebalances": "15-25 per trade (more frequent due to gamma risk)",
+          "cost_per_trade": "$131.25 to $218.75",
+          "impact": "LIKELY ELIMINATES ALL EDGE - short premium strategies live on collecting theta, die by hedging costs"
+        },
+        "annual_impact": "-10% to -30% on gamma-heavy profiles",
+        "verdict": "STRATEGY VIABILITY UNKNOWN until hedging costs added"
+      },
+
+      "recommendation": "IMMEDIATE ACTION REQUIRED: Implement delta hedging simulation. Model rebalancing triggers (±10 delta threshold), calculate ES futures costs per rebalance, add to P&L. This is NON-NEGOTIABLE for profiles 1, 3, and 6."
+    },
+
+    "5_other_transaction_costs": {
+      "severity": "MEDIUM",
+      "status": "MOSTLY COMPLETE",
+
+      "occ_fees": {
+        "reality": "$0.055 per contract",
+        "execution_model": "Included in get_commission_cost()",
+        "trade_tracker": "Unknown - buried in $2.60 flat commission",
+        "verdict": "Likely included but not transparent"
+      },
+
+      "finra_fees": {
+        "reality": "$0.00205 per contract (short sales)",
+        "execution_model": "Included for short sales",
+        "trade_tracker": "Unknown",
+        "verdict": "ExecutionModel has it, TradeTracker unclear"
+      },
+
+      "sec_fees": {
+        "reality": "$0.00182 per $1000 premium (short sales)",
+        "execution_model": "Calculated correctly based on premium",
+        "trade_tracker": "Unknown",
+        "impact": "Tiny (<$0.01 per contract), not material"
+      },
+
+      "exchange_fees": {
+        "reality": "$0.02 to $0.05 per contract (varies by exchange)",
+        "execution_model": "NOT explicitly modeled",
+        "trade_tracker": "NOT modeled",
+        "impact": "Small but should be included",
+        "recommendation": "Add $0.03 per contract to commission"
+      },
+
+      "verdict": "Regulatory fees mostly covered. Missing small exchange fees (~$0.03/contract)."
+    },
+
+    "6_execution_timing_realism": {
+      "severity": "LOW",
+      "status": "ACCEPTABLE",
+
+      "entry_timing": {
+        "code": "Uses entry_date close price as spot",
+        "reality": "Can trade any time during regular hours (9:30-4:00 ET)",
+        "assumption": "End-of-day entry on close",
+        "realism": "Acceptable - conservative (can't use intraday opportunistic timing)"
+      },
+
+      "exit_timing": {
+        "code": "Uses day N close price",
+        "reality": "Can exit any time during day",
+        "assumption": "Exit on close of day N",
+        "realism": "Acceptable"
+      },
+
+      "settlement_prices": {
+        "concern": "Options settle at different times than stock",
+        "code": "Not relevant - not holding to expiration",
+        "verdict": "N/A"
+      },
+
+      "after_hours_gaps": {
+        "code": "No after-hours trading modeled",
+        "reality": "Gaps can occur overnight",
+        "impact": "Minor - overnight risk exists but not a cost modeling issue",
+        "verdict": "Acceptable limitation"
+      }
+    },
+
+    "7_liquidity_constraints": {
+      "severity": "MEDIUM",
+      "status": "NOT MODELED",
+
+      "position_size_assumptions": {
+        "current_backtests": "1-2 contracts per trade",
+        "spy_options_open_interest": {
+          "ATM_weeklies": "10,000 to 100,000+ contracts",
+          "ATM_monthlies": "50,000 to 500,000+ contracts",
+          "capacity_at_current_size": "Virtually unlimited - 1-2 contracts is tiny"
+        }
+      },
+
+      "scaling_analysis": {
+        "10_contracts": "Still tiny, no issues",
+        "100_contracts": "Minor market impact, spreads widen 10-20%",
+        "1000_contracts": "Significant impact, need to model as % of open interest"
+      },
+
+      "code_implementation": {
+        "position_size_limits": "NONE",
+        "market_impact_scaling": "NOT modeled (ExecutionModel has placeholder for >10 contracts)",
+        "verdict": "Not an issue at current scale, but becomes critical if capital increases"
+      },
+
+      "recommendation": "Add position size validation: warn if size exceeds 1% of typical open interest. Add market impact function for large orders."
+    }
+  },
+
+  "cost_component_summary": {
+    "commissions": {
+      "modeled": true,
+      "realistic": "Mixed - ExecutionModel correct, TradeTracker inconsistent",
+      "confidence": "MEDIUM",
+      "fix_required": "Unify commission model"
+    },
+    "bid_ask_spreads": {
+      "modeled": "Partially",
+      "realistic": "NO - TradeTracker hardcoded, doesn't widen in high vol",
+      "confidence": "LOW",
+      "fix_required": "Use ExecutionModel spread calculation based on VIX/moneyness/DTE"
+    },
+    "slippage": {
+      "modeled": "No in backtests",
+      "realistic": "ExecutionModel good, TradeTracker doesn't use it",
+      "confidence": "LOW",
+      "fix_required": "Add size-based slippage to TradeTracker"
+    },
+    "delta_hedging": {
+      "modeled": false,
+      "realistic": "N/A - NOT IMPLEMENTED",
+      "confidence": "ZERO",
+      "fix_required": "CRITICAL - implement hedging simulation"
+    },
+    "regulatory_fees": {
+      "modeled": true,
+      "realistic": "YES - OCC, FINRA, SEC fees included in ExecutionModel",
+      "confidence": "HIGH",
+      "fix_required": "Add small exchange fees ($0.03/contract)"
+    }
+  },
+
+  "realistic_cost_model": {
+    "per_round_trip_straddle_2_legs": {
+      "commissions_and_fees": {
+        "base_commission": "2 legs * $0.65 * 2 (entry+exit) = $2.60",
+        "occ_fees": "2 legs * $0.055 * 2 = $0.22",
+        "finra_fees_if_short": "$0.00205 * 2 * 2 = $0.0082 (negligible)",
+        "exchange_fees": "2 legs * $0.03 * 2 = $0.12",
+        "total_commissions_and_fees": "$2.60 + $0.22 + $0.12 = $2.94"
+      },
+      "bid_ask_spreads": {
+        "normal_vol_ATM": "$0.05 per leg * 2 legs * 2 (entry+exit) = $0.20 to $0.40",
+        "high_vol_ATM": "$0.30 per leg * 2 legs * 2 = $1.20 to $2.40",
+        "trade_tracker_current": "$0.03 * 2 * 2 = $0.12 (UNDERESTIMATED)"
+      },
+      "slippage": {
+        "small_order_1_2_contracts": "$0.02 to $0.05 (10-20% of half-spread)",
+        "current_backtest": "$0 (NOT MODELED)"
+      },
+      "delta_hedging": {
+        "long_straddle_profile_1": "$87.50 to $131.25 per trade (10-15 rebalances)",
+        "short_straddle_profile_3": "$131.25 to $218.75 per trade (15-25 rebalances)",
+        "current_backtest": "$0 (NOT MODELED)"
+      },
+      "total_realistic_cost_per_trade": {
+        "best_case_normal_vol_no_hedging": "$2.94 + $0.30 + $0.03 = $3.27",
+        "typical_case_with_hedging_profile_1": "$3.27 + $100 = $103.27",
+        "worst_case_high_vol_with_hedging": "$2.94 + $2.00 + $0.10 + $175 = $180.04",
+        "current_backtest_assumption": "$2.60 + $0.12 = $2.72 (SEVERELY UNDERESTIMATED)"
+      }
+    }
+  },
+
+  "degradation_estimate": {
+    "current_backtest_cost_per_trade": "$2.72 (commission + hardcoded spread)",
+    "realistic_cost_without_hedging": "$3.27 to $5.00 (normal to high vol)",
+    "realistic_cost_with_hedging": "$100 to $180 per trade",
+
+    "impact_analysis": {
+      "if_avg_trade_pnl_is_50": {
+        "current_assumption": "$50 - $2.72 = $47.28 net",
+        "realistic_no_hedging": "$50 - $4.00 = $46.00 net (-2.7% vs current)",
+        "realistic_with_hedging": "$50 - $120 = -$70 net (LOSING MONEY)"
+      },
+      "if_avg_trade_pnl_is_200": {
+        "current_assumption": "$200 - $2.72 = $197.28 net",
+        "realistic_no_hedging": "$200 - $5.00 = $195.00 net (-1.2%)",
+        "realistic_with_hedging": "$200 - $120 = $80 net (-59% vs current)"
+      },
+      "if_avg_trade_pnl_is_500": {
+        "current_assumption": "$500 - $2.72 = $497.28 net",
+        "realistic_no_hedging": "$500 - $5.00 = $495.00 net (-0.5%)",
+        "realistic_with_hedging": "$500 - $120 = $380 net (-24% vs current)"
+      }
+    },
+
+    "annual_return_impact": {
+      "without_hedging_costs": "-1% to -3% (spread/slippage underestimation)",
+      "with_hedging_costs": "-10% to -30% (depends on hedging frequency)",
+      "march_2020_period": "-5% to -15% (spread widening not captured)",
+      "total_estimated_degradation": "-15% to -50% depending on strategy and period"
+    }
+  },
+
+  "recommendations": {
+    "critical_fixes_required_before_deployment": [
+      {
+        "priority": 1,
+        "issue": "Implement delta hedging simulation",
+        "action": "Add rebalancing logic to TradeTracker: trigger at ±10 delta, use ExecutionModel.get_delta_hedge_cost()",
+        "impact": "Will likely eliminate edge on gamma-heavy strategies (Profiles 1, 3, 6)",
+        "effort": "High - needs rebalancing logic, ES futures simulation",
+        "timeline": "1-2 days"
+      },
+      {
+        "priority": 2,
+        "issue": "Fix spread modeling in TradeTracker",
+        "action": "Remove hardcoded $0.03 spread, use ExecutionModel.get_spread() with actual VIX/moneyness/DTE",
+        "impact": "Will reduce returns by 3-8% annually, more during high vol",
+        "effort": "Medium - refactor TradeTracker to use ExecutionModel",
+        "timeline": "4-8 hours"
+      },
+      {
+        "priority": 3,
+        "issue": "Unify commission model",
+        "action": "TradeTracker should use ExecutionModel.get_commission_cost() instead of hardcoded $2.60",
+        "impact": "Minor - may increase or decrease costs slightly",
+        "effort": "Low - simple refactor",
+        "timeline": "1-2 hours"
+      },
+      {
+        "priority": 4,
+        "issue": "Add size-based slippage",
+        "action": "Use ExecutionModel.get_execution_price() with quantity parameter in TradeTracker",
+        "impact": "Minor at current 1-2 contract size, critical if scaling",
+        "effort": "Low",
+        "timeline": "1-2 hours"
+      }
+    ],
+
+    "validation_required": [
+      {
+        "task": "Compare ExecutionModel costs vs actual broker statements",
+        "source": "Tastyworks/TD Ameritrade account statements",
+        "validate": "Commission + fees per contract matches reality"
+      },
+      {
+        "task": "Validate spread assumptions against real SPY options data",
+        "source": "Polygon bid/ask data from March 2020, normal 2024 periods",
+        "validate": "Spreads during VIX 80+ are 5-10x normal, not constant"
+      },
+      {
+        "task": "Estimate realistic hedging frequency",
+        "method": "Simulate gamma of actual positions, count ±10 delta threshold crossings",
+        "validate": "Rebalancing cost assumptions are reasonable"
+      }
+    ],
+
+    "before_next_backtest_run": [
+      "Fix spread modeling (use ExecutionModel, pass VIX/moneyness/DTE)",
+      "Implement delta hedging for gamma-heavy profiles",
+      "Unify commission calculations",
+      "Add position size warnings if >1% of open interest"
+    ]
+  },
+
+  "verdict": {
+    "deployment_ready": false,
+    "confidence_in_results": "LOW - missing critical cost component (delta hedging)",
+    "estimated_overstatement_of_returns": "15-50% depending on strategy",
+
+    "by_profile": {
+      "Profile_1_LDG": {
+        "structure": "Long ATM Straddle, 75 DTE",
+        "hedging_required": true,
+        "current_cost_model": "Commissions + tiny spread",
+        "missing_costs": "Delta hedging ($87-131 per trade)",
+        "verdict": "Returns SEVERELY overstated, likely unprofitable after hedging"
+      },
+      "Profile_2_SDG": {
+        "structure": "Short-dated straddle, 7 DTE",
+        "hedging_required": "Minimal (low DTE = fast decay)",
+        "current_cost_model": "Reasonable for this profile",
+        "missing_costs": "Spread widening on short DTE",
+        "verdict": "Moderately overstated (spread should be 1.3x wider)"
+      },
+      "Profile_3_CHARM": {
+        "structure": "Short ATM Straddle, 30 DTE",
+        "hedging_required": true,
+        "current_cost_model": "Commissions only",
+        "missing_costs": "Delta hedging ($131-218 per trade) - CRITICAL",
+        "verdict": "LIKELY UNPROFITABLE after hedging - short premium edge destroyed by hedging costs"
+      },
+      "Profile_4_VANNA": {
+        "structure": "Long ATM Call, 60 DTE",
+        "hedging_required": "Optional (directional bet)",
+        "current_cost_model": "Acceptable if unhedged",
+        "missing_costs": "If hedged: $40-80 per trade",
+        "verdict": "Depends on hedging strategy - may be viable unhedged"
+      },
+      "Profile_5_SKEW": {
+        "structure": "Long OTM Put, 45 DTE",
+        "hedging_required": false,
+        "current_cost_model": "OTM spread underestimated",
+        "missing_costs": "Spread should be 1.5-2x wider for OTM",
+        "verdict": "Moderately overstated"
+      },
+      "Profile_6_VOV": {
+        "structure": "Long ATM Straddle, 30 DTE",
+        "hedging_required": true,
+        "current_cost_model": "Missing hedging",
+        "missing_costs": "$100-150 per trade",
+        "verdict": "Severely overstated"
+      }
+    },
+
+    "overall_conclusion": "Current backtest results are UNRELIABLE for deployment decisions. Delta hedging costs alone could eliminate 50-100% of reported edge on gamma-heavy strategies. Must implement realistic hedging simulation and dynamic spread modeling before trusting results.",
+
+    "next_steps": [
+      "1. Implement delta hedging simulation (CRITICAL)",
+      "2. Fix spread modeling to use ExecutionModel",
+      "3. Re-run all backtests (train/validation/test) with realistic costs",
+      "4. Expect 15-50% degradation in returns",
+      "5. If strategies still profitable after fixes → proceed to validation",
+      "6. If strategies become unprofitable → abandon or redesign"
+    ]
+  }
+}
