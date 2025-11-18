@@ -149,6 +149,12 @@ class RotationEngine:
             else:
                 data = data[data['date'] <= end_ts.date()]
 
+        # BUG FIX Round 8: Reset indices after filtering
+        # Without reset_index(), the filtered DataFrame keeps original row numbers
+        # Example: filtering to 2024-01-02 onwards gives rows 250-698 with indices 250-698
+        # This causes warmup logic to fail (thinks row 250 is post-warmup when it's row 0 of filtered data)
+        data = data.reset_index(drop=True)
+
         print(f"  Loaded {len(data)} days of data")
         print(f"  Date range: {data['date'].min()} to {data['date'].max()}")
 

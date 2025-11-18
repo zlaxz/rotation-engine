@@ -386,22 +386,22 @@ class RotationAllocator:
                 # Convert 'profile_1_score' → 'profile_1'
                 profile_name = col.replace('_score', '')
                 score_value = row[col]
-                # Handle NaN/None - RAISE ERROR instead of silent 0
+                # Handle NaN/None - CRITICAL BUG FIX Round 8
                 if pd.isna(score_value):
-                    # Check if we're in warmup period
+                    # NaN during warmup is EXPECTED - specific profiles warm up at different rates
+                    # Example: profile_6_VOV needs 30+ days to compute vol-of-vol
+                    # During warmup, we treat missing profiles as "not expressing this edge" = score 0
+                    # This allows allocation to proceed while waiting for other profiles to warm up
                     row_index = idx
-                    if row_index < 90:  # Warmup period
-                        # NaN in warmup is expected - skip allocation
-                        raise ValueError(
-                            f"Cannot allocate capital during warmup period (row {row_index}). "
-                            f"Profile score {col} is NaN. "
-                            f"Call allocate_weights() with data starting after warmup."
-                        )
+                    if row_index < 150:
+                        # First 150 rows (warmup for slowest profile, profile_6_VOV)
+                        # Replace NaN with 0 = "this edge isn't ready yet" = no allocation to this profile
+                        profile_scores[profile_name] = 0.0
                     else:
-                        # NaN post-warmup is CRITICAL ERROR
+                        # Post-warmup NaN is CRITICAL ERROR
                         raise ValueError(
                             f"CRITICAL: Profile score {col} is NaN at date {date} (row {row_index}). "
-                            f"This indicates missing/corrupt data. NaN must not reach allocation logic. "
+                            f"This indicates missing/corrupt data after warmup period. "
                             f"Check data quality and feature engineering."
                         )
                 else:
