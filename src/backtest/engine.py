@@ -119,6 +119,16 @@ class RotationEngine:
         print("=" * 80)
         print()
 
+        # BUG FIX (2025-11-18): Agent #4/#10 found - components maintain state between runs
+        # Reset all component state for fresh run
+        self.allocator = RotationAllocator(
+            max_profile_weight=self.allocator.max_profile_weight,
+            min_profile_weight=self.allocator.min_profile_weight,
+            vix_scale_threshold=self.allocator.vix_scale_threshold,
+            vix_scale_factor=self.allocator.vix_scale_factor
+        )
+        self.aggregator = PortfolioAggregator()
+
         # Step 1: Load data
         print("Step 1: Loading data...")
         if data is None:
@@ -153,7 +163,9 @@ class RotationEngine:
 
         # Step 3: Run individual profile backtests
         print("\nStep 3: Running individual profile backtests...")
-        profile_results = self._run_profile_backtests(data, profile_scores)
+        # BUG FIX (2025-11-18): Pass data_with_scores instead of data to ensure regime data available
+        # Agent #1/#10 found: profile backtests use data but allocations use data_with_scores
+        profile_results = self._run_profile_backtests(data_with_scores, profile_scores)
 
         # Step 4: Calculate dynamic allocations
         print("\nStep 4: Calculating dynamic allocations...")
@@ -291,12 +303,10 @@ class RotationEngine:
 
             except Exception as e:
                 import traceback
-                print(f"    WARNING: {profile_name} failed: {e}")
+                print(f"    ❌ CRITICAL: {profile_name} failed: {e}")
                 print("    " + "\n    ".join(traceback.format_exc().split('\n')))
-                # Create dummy results with zeros
-                results[profile_name] = pd.DataFrame({
-                    'date': data['date'],
-                    'daily_pnl': 0.0
-                })
+                # BUG FIX (2025-11-18): Agent #2/#10 found - don't mask failures silently
+                # RAISE error instead of creating dummy results - silent failures hide critical bugs
+                raise RuntimeError(f"Profile {profile_name} backtest failed - fix before continuing") from e
 
         return results

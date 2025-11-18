@@ -88,10 +88,13 @@ class PerformanceMetrics:
         """
         Calculate annualized Sharpe ratio.
 
+        BUG FIX (2025-11-18): Handle both P&L (dollars) and returns (percentages)
+        Agent #9 found: Function was receiving dollar P&L but treating as returns
+
         Parameters:
         -----------
         returns : pd.Series
-            Daily returns
+            Daily returns OR daily P&L (auto-detected)
         risk_free_rate : float
             Annual risk-free rate (default 0.0)
 
@@ -100,9 +103,23 @@ class PerformanceMetrics:
         sharpe : float
             Annualized Sharpe ratio
         """
-        excess_returns = returns - (risk_free_rate / self.annual_factor)
+        # AUTO-DETECT: If values > 1.0, likely dollar P&L not percentage returns
+        # Convert P&L to returns if needed
+        if returns.abs().mean() > 1.0:
+            # Input is dollar P&L - convert to returns
+            cumulative_pnl = returns.cumsum()
+            # Calculate returns from cumulative P&L
+            returns_pct = cumulative_pnl.pct_change().dropna()
+            # Replace first NaN with 0 (no prior equity)
+            if len(returns_pct) > 0 and pd.isna(returns_pct.iloc[0]):
+                returns_pct.iloc[0] = returns.iloc[0] / 100000.0  # Normalize by typical capital
+        else:
+            # Input is already percentage returns
+            returns_pct = returns
 
-        if excess_returns.std() == 0:
+        excess_returns = returns_pct - (risk_free_rate / self.annual_factor)
+
+        if excess_returns.std() == 0 or len(excess_returns) == 0:
             return 0.0
 
         return (excess_returns.mean() / excess_returns.std()) * np.sqrt(self.annual_factor)
@@ -116,10 +133,13 @@ class PerformanceMetrics:
         """
         Calculate annualized Sortino ratio (downside deviation).
 
+        BUG FIX (2025-11-18): Convert P&L to returns if needed, fix downside deviation calc
+        Agent #9 found: Same P&L vs returns issue as Sharpe, plus downside deviation error
+
         Parameters:
         -----------
         returns : pd.Series
-            Daily returns
+            Daily returns OR daily P&L (auto-detected)
         risk_free_rate : float
             Annual risk-free rate
         target : float
@@ -130,13 +150,23 @@ class PerformanceMetrics:
         sortino : float
             Annualized Sortino ratio
         """
-        excess_returns = returns - (risk_free_rate / self.annual_factor)
-        downside_returns = returns[returns < target] - target
+        # AUTO-DETECT: Convert P&L to returns if needed (same as Sharpe)
+        if returns.abs().mean() > 1.0:
+            cumulative_pnl = returns.cumsum()
+            returns_pct = cumulative_pnl.pct_change().dropna()
+            if len(returns_pct) > 0 and pd.isna(returns_pct.iloc[0]):
+                returns_pct.iloc[0] = returns.iloc[0] / 100000.0
+        else:
+            returns_pct = returns
 
-        if len(downside_returns) == 0 or downside_returns.std() == 0:
-            return 0.0
+        excess_returns = returns_pct - (risk_free_rate / self.annual_factor)
 
+        # Calculate downside deviation correctly: use all returns, take min(ret-target, 0)
+        downside_returns = np.minimum(returns_pct - target, 0)
         downside_std = np.sqrt((downside_returns ** 2).mean())
+
+        if downside_std == 0 or len(returns_pct) == 0:
+            return 0.0
 
         return (excess_returns.mean() / downside_std) * np.sqrt(self.annual_factor)
 
@@ -186,27 +216,42 @@ class PerformanceMetrics:
         cumulative_pnl: pd.Series
     ) -> float:
         """
-        Calculate Calmar ratio (return / max drawdown).
+        Calculate Calmar ratio (CAGR / max drawdown percentage).
+
+        BUG FIX (2025-11-18): Use percentage-based CAGR vs percentage drawdown
+        Agent #9 found: Unit mismatch (dollars vs dollars) instead of (% vs %)
 
         Parameters:
         -----------
         returns : pd.Series
-            Daily returns
+            Daily returns OR daily P&L (auto-detected)
         cumulative_pnl : pd.Series
             Cumulative P&L
 
         Returns:
         --------
         calmar : float
-            Calmar ratio
+            Calmar ratio (percentage-based)
         """
-        annual_return = returns.mean() * self.annual_factor
-        max_dd = abs(self.max_drawdown(cumulative_pnl))
-
-        if max_dd == 0:
+        if len(cumulative_pnl) < 2:
             return 0.0
 
-        return annual_return / max_dd
+        # Calculate CAGR (percentage return)
+        if cumulative_pnl.iloc[0] == 0:
+            # Can't calculate CAGR from zero starting capital
+            return 0.0
+
+        total_return = cumulative_pnl.iloc[-1] / cumulative_pnl.iloc[0] - 1 if cumulative_pnl.iloc[0] != 0 else 0
+        years = len(cumulative_pnl) / self.annual_factor
+        cagr = (1 + total_return) ** (1 / years) - 1 if years > 0 else total_return
+
+        # Get max drawdown percentage (not dollars)
+        max_dd_pct = abs(self.max_drawdown_pct(cumulative_pnl))
+
+        if max_dd_pct == 0 or np.isnan(max_dd_pct):
+            return 0.0
+
+        return cagr / max_dd_pct
 
     def win_rate(self, returns: pd.Series) -> float:
         """

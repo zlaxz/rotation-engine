@@ -20,11 +20,13 @@ class ExecutionModel:
         base_spread_atm: float = 0.03,  # Base ATM spread ($) - SPY penny-wide spreads, 3x for safety
         base_spread_otm: float = 0.05,  # Base OTM spread ($) - slightly wider
         spread_multiplier_vol: float = 2.0,  # Spread widening in high vol (2-3x)
-        slippage_pct: float = 0.0,  # NO slippage for retail size (user's real trades confirm)
+        slippage_small: float = 0.10,  # 10% of spread for 1-10 contracts (BUG FIX 2025-11-18)
+        slippage_medium: float = 0.25,  # 25% of spread for 11-50 contracts
+        slippage_large: float = 0.50,  # 50% of spread for 50+ contracts
         es_commission: float = 2.50,  # ES futures commission per round-trip
-        es_slippage: float = 0.0,  # NO ES slippage for liquid futures (simulate in fill price if needed)
+        es_spread: float = 12.50,  # ES bid-ask spread (0.25 points = $12.50) - BUG FIX 2025-11-18
         option_commission: float = 0.65,  # Options commission per contract
-        sec_fee_rate: float = 0.00182  # SEC fee per contract (for short sales)
+        sec_fee_rate: float = 0.00182  # SEC fee per $1000 principal (for short sales)
     ):
         """
         Initialize execution model.
@@ -51,9 +53,12 @@ class ExecutionModel:
         self.base_spread_atm = base_spread_atm
         self.base_spread_otm = base_spread_otm
         self.spread_multiplier_vol = spread_multiplier_vol
-        self.slippage_pct = slippage_pct
+        # BUG FIX (2025-11-18): Size-based slippage instead of fixed percentage
+        self.slippage_small = slippage_small
+        self.slippage_medium = slippage_medium
+        self.slippage_large = slippage_large
         self.es_commission = es_commission
-        self.es_slippage = es_slippage
+        self.es_spread = es_spread  # BUG FIX: ES bid-ask spread included
         self.option_commission = option_commission
         self.sec_fee_rate = sec_fee_rate
 
@@ -89,8 +94,10 @@ class ExecutionModel:
         # Base spread depends on structure
         base = self.base_spread_otm if is_strangle else self.base_spread_atm
 
-        # Adjust for moneyness (wider spreads for OTM)
-        moneyness_factor = 1.0 + moneyness * 2.0  # Spread widens linearly with OTM
+        # BUG FIX (2025-11-18): Agent #6b found - moneyness should be non-linear
+        # OTM spreads widen exponentially, not linearly
+        # ATM: factor = 1.0, 10% OTM: factor ~1.5, 20% OTM: factor ~2.5
+        moneyness_factor = 1.0 + (moneyness ** 0.7) * 8.0  # Non-linear widening
 
         # Adjust for DTE (wider spreads for short DTE)
         dte_factor = 1.0
@@ -120,10 +127,13 @@ class ExecutionModel:
         moneyness: float,
         dte: int,
         vix_level: float = 20.0,
-        is_strangle: bool = False
+        is_strangle: bool = False,
+        quantity: int = 1  # BUG FIX (2025-11-18): Agent #6b - size-based slippage
     ) -> float:
         """
         Get realistic execution price including bid-ask spread and slippage.
+
+        BUG FIX (2025-11-18): Added size-based slippage - zero slippage is unrealistic
 
         Parameters:
         -----------
@@ -139,6 +149,8 @@ class ExecutionModel:
             Current VIX level
         is_strangle : bool
             Whether this is a strangle
+        quantity : int
+            Order size (for size-based slippage)
 
         Returns:
         --------
@@ -148,8 +160,16 @@ class ExecutionModel:
         spread = self.get_spread(mid_price, moneyness, dte, vix_level, is_strangle)
         half_spread = spread / 2.0
 
-        # Additional slippage
-        slippage = mid_price * self.slippage_pct
+        # Size-based slippage as % of half-spread
+        abs_qty = abs(quantity)
+        if abs_qty <= 10:
+            slippage_pct = self.slippage_small
+        elif abs_qty <= 50:
+            slippage_pct = self.slippage_medium
+        else:
+            slippage_pct = self.slippage_large
+
+        slippage = half_spread * slippage_pct
 
         if side == 'buy':
             # Pay ask + slippage
@@ -160,29 +180,45 @@ class ExecutionModel:
         else:
             raise ValueError(f"Invalid side: {side}. Must be 'buy' or 'sell'")
 
-    def get_delta_hedge_cost(self, contracts: int) -> float:
+    def get_delta_hedge_cost(self, contracts: float, es_mid_price: float = 4500.0) -> float:
         """
         Calculate cost of delta hedging with ES futures.
 
+        BUG FIX (2025-11-18): Agent #6b found - missing ES bid-ask spread ($12.50 per round trip)
+
         Parameters:
         -----------
-        contracts : int
+        contracts : float
             Number of ES futures contracts (can be fractional, will round)
+        es_mid_price : float
+            ES mid price (for market impact on large orders, currently unused)
 
         Returns:
         --------
         cost : float
-            Total cost of hedging (commission + slippage)
+            Total cost of hedging (commission + ES spread + market impact)
         """
-        # Round to nearest contract
-        actual_contracts = abs(round(contracts))
-
-        if actual_contracts == 0:
+        # Round to nearest contract, but zero out if < 0.5 contracts
+        if abs(contracts) < 0.5:
             return 0.0
 
-        # Cost = commission + slippage per contract
-        cost_per_contract = self.es_commission + self.es_slippage
-        return actual_contracts * cost_per_contract
+        actual_contracts = abs(round(contracts))
+
+        # ES typical spread: 0.25 points = $12.50 per contract (one-way)
+        # We pay half-spread on entry
+        es_half_spread = self.es_spread / 2.0
+
+        # Base costs: commission + half spread (one-way)
+        cost_per_contract = self.es_commission + es_half_spread
+
+        # Market impact for larger orders
+        impact_multiplier = 1.0
+        if actual_contracts > 10:
+            impact_multiplier = 1.1  # 10% additional cost for >10 contracts
+        elif actual_contracts > 50:
+            impact_multiplier = 1.25  # 25% additional cost for >50 contracts
+
+        return actual_contracts * cost_per_contract * impact_multiplier
 
     def apply_spread_to_price(
         self,
@@ -221,9 +257,11 @@ class ExecutionModel:
             mid_price, side, moneyness, dte, vix_level, is_strangle
         )
 
-    def get_commission_cost(self, num_contracts: int, is_short: bool = False) -> float:
+    def get_commission_cost(self, num_contracts: int, is_short: bool = False, premium: float = 0.0) -> float:
         """
         Calculate total commission and fees for options trade.
+
+        BUG FIX (2025-11-18): Agent #6b found - missing OCC and FINRA fees ($0.06+/contract)
 
         Parameters:
         -----------
@@ -231,6 +269,8 @@ class ExecutionModel:
             Number of contracts traded (absolute value)
         is_short : bool
             Whether this is a short sale (incurs SEC fees)
+        premium : float
+            Option premium (for SEC fee calculation which is per $1000 of principal)
 
         Returns:
         --------
@@ -242,12 +282,19 @@ class ExecutionModel:
         # Base commission
         commission = num_contracts * self.option_commission
 
-        # SEC fees for short sales
+        # SEC fee is actually $0.00182 per $1000 of principal (NOT per contract)
         sec_fees = 0.0
-        if is_short:
-            sec_fees = num_contracts * self.sec_fee_rate
+        if is_short and premium > 0:
+            principal = num_contracts * 100 * premium
+            sec_fees = principal * (0.00182 / 1000.0)
 
-        return commission + sec_fees
+        # OCC fees ($0.055 per contract) - MISSING in original
+        occ_fees = num_contracts * 0.055
+
+        # FINRA TAFC fee ($0.00205 per contract for short sales) - MISSING in original
+        finra_fees = num_contracts * 0.00205 if is_short else 0.0
+
+        return commission + sec_fees + occ_fees + finra_fees
 
 
 def calculate_moneyness(strike: float, spot: float) -> float:
