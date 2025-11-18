@@ -323,19 +323,34 @@ class ExitEngineV1:
         entry_cost = trade_data['entry']['entry_cost']
         daily_path = trade_data['path']
 
-        # Generate unique trade ID for TP1 tracking
-        trade_id = trade_data['entry']['entry_date']
+        # FIXED Round 2: Generate unique trade ID (date + strike + expiry)
+        # Using only date causes collisions for same-day trades
+        entry_info = trade_data['entry']
+        trade_id = f"{entry_info['entry_date']}_{entry_info.get('strike', 0)}_{entry_info.get('expiry', '')}"
+
+        # FIXED Round 2: Guard against empty path
+        if not daily_path or len(daily_path) == 0:
+            return {
+                'exit_day': 0,
+                'exit_reason': 'no_tracking_data',
+                'exit_pnl': -entry_cost,  # Lost entry cost
+                'exit_fraction': 1.0,
+                'entry_cost': entry_cost,
+                'pnl_pct': -1.0
+            }
 
         # Check each day for exit trigger
         for day in daily_path:
             day_idx = day['day']
             mtm_pnl = day['mtm_pnl']
 
-            # Calculate P&L percentage (FIXED: handle zero and preserve signs)
+            # Calculate P&L percentage (FIXED Round 2: use abs() for credit positions)
+            # For shorts (negative entry_cost): pnl_pct = mtm_pnl / abs(entry_cost)
+            # This gives: -$100 loss / $500 premium = -20% (correct)
             if abs(entry_cost) < 0.01:  # Near-zero entry cost (break-even)
                 pnl_pct = 0
             else:
-                pnl_pct = mtm_pnl / entry_cost
+                pnl_pct = mtm_pnl / abs(entry_cost)
 
             # Check if exit triggered
             should_exit, fraction, reason = self.should_exit(
@@ -348,10 +363,14 @@ class ExitEngineV1:
             )
 
             if should_exit:
+                # FIXED Round 2: Scale exit P&L by fraction for partial exits
+                # If TP1 closes 50% of position, only realize 50% of current P&L
+                scaled_pnl = mtm_pnl * fraction
+
                 return {
                     'exit_day': day_idx,
                     'exit_reason': reason,
-                    'exit_pnl': mtm_pnl,
+                    'exit_pnl': scaled_pnl,  # Scaled by fraction
                     'exit_fraction': fraction,
                     'entry_cost': entry_cost,
                     'pnl_pct': pnl_pct
@@ -360,11 +379,11 @@ class ExitEngineV1:
         # No exit triggered - use last day (14-day backstop)
         last_day = daily_path[-1]
 
-        # FIXED: Handle division by zero
+        # FIXED Round 2: Use abs() for credit position P&L percentage
         if abs(entry_cost) < 0.01:
             final_pnl_pct = 0
         else:
-            final_pnl_pct = last_day['mtm_pnl'] / entry_cost
+            final_pnl_pct = last_day['mtm_pnl'] / abs(entry_cost)
 
         return {
             'exit_day': last_day['day'],
