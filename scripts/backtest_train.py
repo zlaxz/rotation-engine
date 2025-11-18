@@ -83,6 +83,17 @@ def load_spy_data() -> pd.DataFrame:
             })
 
     spy = pd.DataFrame(spy_data)
+
+    # Validate data loaded successfully
+    if len(spy) == 0:
+        raise ValueError(
+            "CRITICAL: No SPY data loaded!\n"
+            "Check:\n"
+            "1. Data drive mounted: /Volumes/VelocityData/\n"
+            "2. Path exists: /Volumes/VelocityData/velocity_om/parquet/stock/SPY/\n"
+            "3. Date range has data: Need data from warmup period onwards"
+        )
+
     spy = spy.sort_values('date').reset_index(drop=True)
 
     # Calculate derived features
@@ -97,8 +108,9 @@ def load_spy_data() -> pd.DataFrame:
 
     spy['MA20'] = spy['close'].shift(1).rolling(20).mean()
     spy['MA50'] = spy['close'].shift(1).rolling(50).mean()
-    spy['slope_MA20'] = spy['MA20'].pct_change(20).shift(1)  # FIXED: Shift after pct_change
-    spy['slope_MA50'] = spy['MA50'].pct_change(50).shift(1)  # FIXED: Shift after pct_change
+    # MA already shifted, so pct_change is backward-looking (no extra shift needed)
+    spy['slope_MA20'] = spy['MA20'].pct_change(20)
+    spy['slope_MA50'] = spy['MA50'].pct_change(50)
 
     # Realized volatility (annualized)
     # Use shifted returns so RV doesn't include today's move
