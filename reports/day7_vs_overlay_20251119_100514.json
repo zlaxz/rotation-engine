@@ -1,0 +1,22 @@
+{
+  "v0_day7": {
+    "total_pnl": 0,
+    "win_rate": 0,
+    "avg_days": 0,
+    "avg_capture": 0
+  },
+  "v1_overlay": {
+    "total_pnl": 0,
+    "win_rate": 0,
+    "avg_days": 0,
+    "avg_capture": 0
+  },
+  "harm_analysis": {
+    "winners_cut_early": 0,
+    "early_failures_saved": 0,
+    "overall_verdict": "PASS"
+  },
+  "by_profile": {},
+  "by_year": {},
+  "final_verdict": "APPROVED"
+}

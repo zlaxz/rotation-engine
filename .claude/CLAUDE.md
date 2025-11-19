@@ -7,6 +7,78 @@
 
 ---
 
+## 🔴 CRITICAL: NEVER USE FAKE DATA - INSTANT DISQUALIFICATION
+
+**ABSOLUTE RULE: NEVER SIMULATE, FAKE, OR APPROXIMATE DATA WHEN REAL DATA EXISTS**
+
+**I have access to:**
+- Polygon minute bars: `/Volumes/VelocityData/polygon_downloads/us_options_opra/`
+- Real bid/ask data
+- Actual market microstructure
+- Historical intraday data 2014-2025
+
+**I WILL NEVER:**
+- ❌ Simulate intraday data from daily bars
+- ❌ Use linear interpolation as proxy for real data
+- ❌ Create fake data "for testing purposes"
+- ❌ Use approximations when real data exists
+- ❌ Assume data doesn't exist without checking
+
+**Before using ANY data:**
+1. Check if real data exists on VelocityData drive
+2. If real data exists → USE IT
+3. If real data doesn't exist → Ask Zach before simulating
+
+**Consequence of violation:**
+Using fake data in quant work = INSTANT REMOVAL FROM PROJECT. No warnings.
+
+---
+
+## 🔴 CRITICAL: MANDATORY MULTI-AGENT AUDIT BEFORE RUNNING CODE
+
+**ABSOLUTE RULE: MINIMUM 3-4 SPECIALIST AGENTS MUST AUDIT BEFORE RUNNING ANY CODE**
+
+**After writing ANY code that:**
+- Calculates P&L
+- Makes trading decisions
+- Processes market data
+- Tests strategies
+- Runs backtests
+
+**I MUST use MINIMUM 3-4 of these agents BEFORE running:**
+
+```
+REQUIRED AGENTS (pick 3-4 based on code type):
+1. backtest-bias-auditor     → Hunt for look-ahead bias, temporal violations
+2. strategy-logic-auditor    → Red-team for bugs, off-by-one, sign errors
+3. data-quality-auditor      → Verify data integrity, detect bad data
+4. statistical-validator     → Test statistical correctness
+5. overfitting-detector      → Check for curve-fitting
+```
+
+**The Pattern (MANDATORY):**
+```
+1. Write code
+2. Launch 3-4 specialist agents in PARALLEL
+3. Read ALL audit reports
+4. Fix ALL critical/high bugs
+5. Re-audit if major fixes made
+6. THEN run code
+```
+
+**NEVER:**
+- ❌ Use only 1 agent
+- ❌ Run code before auditing
+- ❌ Skip audits "because it's simple"
+- ❌ Audit after running and finding bugs
+
+**Consequence of violation:**
+Single-agent audit or running before audit = Strike. Three strikes = REMOVED FROM PROJECT.
+
+**Strike count resets:** After 5 consecutive sessions with proper multi-agent audits.
+
+---
+
 ## 🔴 CRITICAL: MANDATORY TRAIN/VALIDATION/TEST METHODOLOGY
 
 **MY ABSOLUTE NON-NEGOTIABLE COMMITMENT:**
@@ -299,43 +371,64 @@ When working in this directory, I am:
 
 ---
 
-## 🔴 CRITICAL: AUTO-LOAD QUANT SKILLS AT SESSION START
+## 🔴 CRITICAL: MANDATORY SKILL LOADING IN FIRST RESPONSE
 
-**SESSION START PROTOCOL FOR THIS PROJECT:**
+**ABSOLUTE REQUIREMENT FOR FIRST RESPONSE IN NEW SESSION:**
 
-**IMMEDIATELY after session startup hooks, I MUST load these skills:**
+**I MUST load all 6 core quant skills in my FIRST response to Zach, BEFORE doing any other work.**
+
+**The ONLY acceptable first response pattern:**
 
 ```
-1. Skill: backtest-architect
-2. Skill: backtest-bias-auditor
-3. Skill: options-pricing-expert
-4. Skill: quant-system-architect
-5. Skill: statistical-validator
-6. Skill: overfitting-detector
+Step 1: LOAD SKILLS (use Skill tool 6 times in parallel)
+  - Skill: backtest-architect
+  - Skill: backtest-bias-auditor
+  - Skill: options-pricing-expert
+  - Skill: quant-system-architect
+  - Skill: statistical-validator
+  - Skill: overfitting-detector
+
+Step 2: THEN respond to Zach's request
 ```
+
+**BANNED first response patterns:**
+- ❌ Start working immediately without loading skills
+- ❌ Load skills partway through response
+- ❌ Load skills only after being called out
+- ❌ "I'll load skills and then..." (must actually load them, not just say it)
+
+**Visual enforcement:**
+My first response MUST contain 6 `<invoke name="Skill">` tool calls BEFORE any other content.
 
 **Why This Matters:**
-- I cannot write proper backtest code without backtest-architect knowledge
-- I cannot price options correctly without options-pricing-expert knowledge
-- I will make basic mistakes that lose capital without this expertise loaded
+- I cannot write proper backtest code without backtest-architect knowledge loaded
+- I cannot price options correctly without options-pricing-expert knowledge loaded
+- I WILL make basic mistakes that lose capital without this expertise loaded
+- Loading skills retroactively doesn't help - damage already done
 
 **The Workflow (MANDATORY):**
 
-1. **Session starts** → Load all 6 core quant skills FIRST
-2. **I work** → Using loaded expert knowledge to write code
-3. **I audit my work** → Launch independent AGENTS to catch blind spots
+1. **User sends first message** → I load all 6 skills FIRST (parallel Skill tool calls)
+2. **Skills load** → I now have expert knowledge to work correctly
+3. **I respond** → Using loaded expertise to provide accurate guidance
+4. **I work** → Write code with loaded knowledge
+5. **I audit** → Launch independent AGENTS to catch blind spots
 
 **NOT:**
-1. Write code blind → Find I made mistakes → Load skills retroactively ❌
+1. User sends message → I start working blind → Make mistakes → Load skills when caught ❌
 
-**Lesson from 2025-11-18:**
+**Lesson from 2025-11-18 (and today):**
 - Wrote 3 backtest scripts without backtest-architect skill loaded
 - Made API signature errors, missing strike calculations, parameter override bugs
 - Agents found 14 bugs I created by working without expertise
+- **TODAY: Added envelope exit logic without skills loaded, had to audit retroactively**
 - If skills were loaded first → Would have written correct code initially
 
-**My Commitment:**
-When I start work in rotation-engine, FIRST ACTION is loading skills. Not after writing code. BEFORE.
+**Enforcement:**
+If Zach catches me working without skills loaded in first response, I have FAILED the session start protocol and must acknowledge the failure, load skills, then audit all work done without skills loaded.
+
+**My Absolute Commitment:**
+My FIRST action in EVERY new session is loading these 6 skills. Not after doing work. Not after being reminded. FIRST thing in FIRST response.
 
 ---
 

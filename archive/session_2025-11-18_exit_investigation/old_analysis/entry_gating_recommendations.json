@@ -1,0 +1,44 @@
+{
+  "Profile_1_LDG": {
+    "current_win_rate": 0.43333333333333335,
+    "avg_winner_pnl": 336.98461538461544,
+    "avg_loser_pnl": -338.2470588235293,
+    "total_trades": 150,
+    "recommended_gates": []
+  },
+  "Profile_2_SDG": {
+    "current_win_rate": 0.36538461538461536,
+    "avg_winner_pnl": 806.7999999999998,
+    "avg_loser_pnl": -561.5636363636364,
+    "total_trades": 52,
+    "recommended_gates": []
+  },
+  "Profile_3_CHARM": {
+    "current_win_rate": 0.6296296296296297,
+    "avg_winner_pnl": 457.4666666666668,
+    "avg_loser_pnl": -746.0333333333333,
+    "total_trades": 81,
+    "recommended_gates": []
+  },
+  "Profile_4_VANNA": {
+    "current_win_rate": 0.5864197530864198,
+    "avg_winner_pnl": 580.0000000000003,
+    "avg_loser_pnl": -565.1552238805967,
+    "total_trades": 162,
+    "recommended_gates": []
+  },
+  "Profile_5_SKEW": {
+    "current_win_rate": 0.21212121212121213,
+    "avg_winner_pnl": 740.2285714285715,
+    "avg_loser_pnl": -468.5269230769231,
+    "total_trades": 66,
+    "recommended_gates": []
+  },
+  "Profile_6_VOV": {
+    "current_win_rate": 0.3248407643312102,
+    "avg_winner_pnl": 745.3490196078434,
+    "avg_loser_pnl": -519.1056603773583,
+    "total_trades": 157,
+    "recommended_gates": []
+  }
+}

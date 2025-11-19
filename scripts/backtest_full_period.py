@@ -181,8 +181,11 @@ def get_profile_configs() -> Dict:
 
         'Profile_2_SDG': {
             'name': 'Short-Dated Gamma Spike',
-            'description': 'Capture short-term gamma in momentum',
-            'entry_condition': lambda row: row.get('return_5d', 0) > 0.03,
+            'description': 'Capture short-term gamma in fear context (bounce in downtrend)',
+            'entry_condition': lambda row: (
+                row.get('return_5d', 0) > 0.03 and      # Short-term spike
+                row.get('slope_MA20', 0) < 0             # HARD FILTER: Downtrend context (fear)
+            ),
             'structure': 'Long ATM Straddle',
             'dte_target': 7,
             'legs': [

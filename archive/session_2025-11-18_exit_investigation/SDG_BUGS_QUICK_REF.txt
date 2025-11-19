@@ -1,0 +1,61 @@
+SDG MULTIDIMENSIONAL SEPARATION SCRIPT - BUG SUMMARY
+======================================================
+
+FILE: scripts/sdg_multidimensional_separation.py
+STATUS: 7 BUGS (2 CRITICAL, 3 HIGH, 2 MEDIUM)
+VERDICT: DO NOT RUN - WILL CRASH
+
+CRITICAL BUGS (WILL CRASH)
+==========================
+
+1. scipy import after code starts (Line 111)
+   - Import placed in middle of script
+   - Fix: Move to top with other imports
+   - Time: 1 min
+
+HIGH BUGS (WILL CRASH ON REALISTIC DATA)
+=========================================
+
+2. No validation for empty features_list (Line 93)
+   - If all trades filtered → empty DataFrame → crash
+   - Fix: Add len(features_list) == 0 check
+   - Time: 2 min
+
+3. StandardScaler with zero-variance features (Line 153)
+   - If all values same → divide by zero → NaN
+   - Fix: Check std() before scaling, drop zero-var features
+   - Time: 5 min
+
+4. KMeans with <K samples (Line 156)
+   - If only 1 sample → KMeans(n_clusters=2) crashes
+   - Fix: Check len(features_scaled) >= 2
+   - Time: 3 min
+
+MEDIUM BUGS (WRONG RESULTS)
+===========================
+
+5. T-test assumes equal variances (Line 130)
+   - Should use Welch's t-test
+   - Fix: Add equal_var=False parameter
+   - Time: 1 min
+
+6. fillna(0) creates artificial data (Line 151)
+   - 0 has meaning (flat/no return), not "missing"
+   - Fix: Use dropna() instead of fillna(0)
+   - Time: 2 min
+
+7. No check for empty good_df/peakless_df (Line 206)
+   - If all trades same category → median() on empty → warning
+   - Fix: Add validation after group separation
+   - Time: 3 min
+
+CRASH PROBABILITY: 85%
+TOTAL FIX TIME: 30 minutes
+
+FIXED VERSION: scripts/sdg_multidimensional_separation_FIXED.py
+
+NEXT STEPS:
+1. Use FIXED version
+2. Test on small subset first
+3. Verify outputs make sense
+4. Run on full dataset

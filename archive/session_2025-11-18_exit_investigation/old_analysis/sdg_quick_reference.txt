@@ -1,0 +1,104 @@
+
+╔═══════════════════════════════════════════════════════════════════════════════╗
+║                     PROFILE 2 (SDG) - QUICK REFERENCE CARD                    ║
+╚═══════════════════════════════════════════════════════════════════════════════╝
+
+┌─ PEAK TIMING SNAPSHOT ────────────────────────────────────────────────────────┐
+│                                                                               │
+│  Mean Peak:           4.5 days   │  vs LDG: 6.9 days (2.4 days faster)      │
+│  Median Peak:         3.5 days   │  vs LDG: 7.0 days                        │
+│  Range:               0-14 days  │                                            │
+│  Early Rate (≤5 days): 64%       │  vs LDG: 46% (+18.6 pp advantage)        │
+│                                                                               │
+│  KEY: Half of winners peak by Day 3, showing concentration in early trades   │
+│                                                                               │
+└───────────────────────────────────────────────────────────────────────────────┘
+
+┌─ PROFITABILITY BREAKDOWN ─────────────────────────────────────────────────────┐
+│                                                                               │
+│  Win Rate:            71% (30 winners, 12 losers)                           │
+│  Average Peak:        +31.6% (much higher than LDG +11.9%)                  │
+│  Median Peak:         +10.9% (median winner still well above zero)          │
+│  Winner Avg Profit:   +46.3% per winning trade                             │
+│  Loser Avg Loss:      -5.8% per losing trade                               │
+│                                                                               │
+│  KEY: Higher volatility = higher win rate but bigger drawdowns when wrong   │
+│                                                                               │
+└───────────────────────────────────────────────────────────────────────────────┘
+
+┌─ CRITICAL THRESHOLDS FOR EXIT DESIGN ─────────────────────────────────────────┐
+│                                                                               │
+│  ⚠️  Day 0 (Entry Day):  100% LOSS RATE - Regime classifier lagging        │
+│  ⚠️  Day 5:             Value cliff - Start of decay acceleration          │
+│  ✓   Day 4:             47% of winners captured                            │
+│  ✓   Day 5:             50% of winners captured (breakeven point)          │
+│  ✓   Day 8:             73% of winners captured (good compromise)          │
+│                                                                               │
+│  RECOMMENDATION: Exit Days 4-5 for quick rotation, or Day 8 for balance    │
+│                                                                               │
+└───────────────────────────────────────────────────────────────────────────────┘
+
+┌─ SUGGESTED EXIT RULES (RANKED BY IMPLEMENTATION) ────────────────────────────┐
+│                                                                               │
+│  🥇 SIMPLE (Mechanical Time Exit):                                          │
+│     Exit All on Day 4 close (no exceptions)                                │
+│     → Captures 47% of winners, avoids day 5 cliff                          │
+│     → Cost: Leaves 53% of winners on table                                 │
+│                                                                               │
+│  🥈 RECOMMENDED (Profit Target + Time):                                     │
+│     Exit at +20% profit OR Day 4 OR -10% loss on Day 2                    │
+│     → Captures fast winners, cuts losers early                             │
+│     → Cost: Requires live monitoring                                       │
+│                                                                               │
+│  🥉 ADVANCED (Regime-Dependent):                                            │
+│     High gamma (>0.12) → Exit Day 3                                       │
+│     Low gamma (<0.07) → Exit Day 7-8                                      │
+│     → Optimized for actual trade characteristics                           │
+│     → Cost: Parameter tuning required                                      │
+│                                                                               │
+│  ⭐ GREEK-BASED (Theoretical Optimal):                                       │
+│     Exit when portfolio delta neutral or move > expected                   │
+│     → Aligns exits with thesis completion                                  │
+│     → Cost: High skill requirement for live management                     │
+│                                                                               │
+└───────────────────────────────────────────────────────────────────────────────┘
+
+┌─ WHAT DRIVES FAST vs SLOW PEAKS ──────────────────────────────────────────────┐
+│                                                                               │
+│  FAST PEAKERS (Days 0-3):                SLOW PEAKERS (Days 8+):            │
+│  • Higher RV5 (0.1443 vs 0.1402)         • Higher ATR5 (7.54 vs 6.02)      │
+│  • LOWER ATR5 (6.02 vs 7.54)             • HIGHER vega (73.82 vs 46.12)    │
+│  • MUCH higher gamma (0.133 vs 0.062)    • Lower gamma (0.062 vs 0.133)    │
+│  • Lower vega (46 vs 74)                 • Choppier price action           │
+│  • Strong trend (slope 0.0383)           • Weaker trend (slope 0.0178)    │
+│                                                                               │
+│  PATTERN: Fast = volatile/trendy, Slow = choppy/vol-dependent              │
+│  → Can use entry gamma/ATR to predict exit timing                          │
+│                                                                               │
+└───────────────────────────────────────────────────────────────────────────────┘
+
+┌─ RISK MANAGEMENT GUIDELINES ──────────────────────────────────────────────────┐
+│                                                                               │
+│  Position Size:       Max 2% per trade (high variance profile)              │
+│  Portfolio Limit:     Max 10% in SDG (5 concurrent), 5% with LDG           │
+│  Max Hold:            Day 5-7 (beyond day 8 = decay dominates)             │
+│  Weekend Risk:        Friday entries risky (gap + Monday vol jump)          │
+│  Loss Exit:           Implement -10% stop by day 2 minimum                  │
+│  Profit Scaling:      Exit 50% at +15%, let 50% ride to +30%               │
+│                                                                               │
+│  Expected Value:      +29.6% per trade (EV = 71% × +46% - 29% × -10%)     │
+│  Drawdown Scenario:   5 losers in row = -50%, plan accordingly             │
+│                                                                               │
+└───────────────────────────────────────────────────────────────────────────────┘
+
+┌─ IMMEDIATE ACTION ITEMS ──────────────────────────────────────────────────────┐
+│                                                                               │
+│  Priority 1: Implement +20% profit target exit (Week 1)                    │
+│  Priority 2: Investigate Day 0 loss trades (Week 1)                        │
+│  Priority 3: Add -10% loss exit on Day 2 (Week 1)                          │
+│  Priority 4: Build regime-dependent exit logic (Week 2)                    │
+│  Priority 5: Monitor post-peak decay for refinement (Ongoing)              │
+│                                                                               │
+└───────────────────────────────────────────────────────────────────────────────┘
+
+FULL ANALYSIS: /Users/zstoc/rotation-engine/analysis/peak_timing_profile2_sdg.md

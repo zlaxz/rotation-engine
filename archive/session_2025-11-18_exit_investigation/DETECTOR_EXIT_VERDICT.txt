@@ -1,0 +1,76 @@
+================================================================================
+DETECTOR-BASED EXIT ENGINE - RED TEAM AUDIT VERDICT
+Date: 2025-11-18
+================================================================================
+
+STATUS: DO NOT TEST - CRITICAL BUGS FOUND
+
+THE PROBLEM:
+-----------
+Detector-based exit logic has FATAL data flow bug. Exit engine tries to
+recalculate detector scores from incomplete market_conditions dict.
+
+Result: 100% of detector exits FAIL, fall back to simple slope checks.
+
+Testing NOW will produce INVALID results (testing fallback logic, not detector exits).
+
+CRITICAL BUGS (3):
+-----------------
+1. Feature Mismatch - market_conditions missing: vix_close, high, low, return
+   Impact: Detector calculation fails, returns None, 100% failure rate
+
+2. Silent Failures - None scores fall back with no logging
+   Impact: User thinks detector exits work (they don't), invalid results
+
+3. Missing Context - Single-row DataFrame, no rolling window history
+   Impact: IV_rank, VVIX calculations broken, scores corrupted
+
+THE FIX (4-5 hours):
+-------------------
+BETTER ARCHITECTURE: Pre-compute detector scores upstream
+
+1. In regime classifier: Add detector.compute_all_profiles(df)
+2. In TradeTracker: Include detector scores in market_conditions dict
+3. In ExitEngine: Just READ pre-computed scores (don't recalculate)
+
+Fixes all 3 CRITICAL bugs at once. Code patches in DETECTOR_EXIT_CRITICAL_FIXES.md
+
+ADDITIONAL FINDINGS:
+-------------------
+HIGH-001: Detector threshold 0.30 may be too low (exits too late)
+HIGH-002: days_held guards prevent quick exits for fast profiles
+
+MEDIUM: Edge cases, silent exception swallowing, inconsistent fallbacks
+LOW: Dead code (TP1 tracking), outdated docstrings
+
+ACTION PLAN:
+-----------
+DO NOT: Run backtest now (results invalid, waste of time)
+
+DO THIS:
+1. Apply fixes from DETECTOR_EXIT_CRITICAL_FIXES.md (2-3 hours)
+2. Smoke test - verify detector scores NOT None (30 min)
+3. Optimize threshold 0.20-0.40 on train period (1-2 hours)
+4. Validate on out-of-sample 2022-2023 (30 min)
+
+TOTAL: 4-5 hours to deployment-ready
+
+BOTTOM LINE:
+-----------
+Detector exit CONCEPT is RIGHT (exit when regime fades = intelligent).
+IMPLEMENTATION is BROKEN (data flow incompatibility).
+Fix data flow FIRST, then test properly.
+
+Don't waste time testing broken implementation.
+
+================================================================================
+FILES CREATED:
+================================================================================
+1. EXIT_ENGINE_V1_DETECTOR_EXITS_RED_TEAM_AUDIT.md (Complete audit, all bugs)
+2. DETECTOR_EXIT_BUGS_QUICK_REF.md (Quick reference)
+3. DETECTOR_EXIT_CRITICAL_FIXES.md (Code patches)
+4. 00_DETECTOR_EXIT_AUDIT_EXECUTIVE_SUMMARY.md (Decision summary)
+5. DETECTOR_EXIT_VERDICT.txt (This file)
+
+START WITH: 00_DETECTOR_EXIT_AUDIT_EXECUTIVE_SUMMARY.md for full context
+================================================================================

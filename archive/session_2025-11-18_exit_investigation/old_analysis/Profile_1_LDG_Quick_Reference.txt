@@ -1,0 +1,180 @@
+================================================================================
+PROFILE 1 LDG - QUICK REFERENCE SUMMARY
+================================================================================
+
+DATA: 140 trades from backtest_results/current/results.json
+
+PEAK MAGNITUDE STATISTICS:
+  Mean peak:             $311.28
+  Median peak:           $198.30
+  Std dev:               $346.38
+  Range:                 -$17.20 to $2,267.80
+
+  Distribution:
+    - Large peaks (>$500):     31 trades (22.1%)
+    - Medium ($200-$500):      39 trades (27.9%)
+    - Small (<$200):           70 trades (50.0%)
+    - Negative:                23 trades (16.4%)
+
+================================================================================
+WHAT PREDICTS LARGE PEAKS (>$500)?
+================================================================================
+
+1. PATH VOLATILITY (Correlation: +0.7101, p<0.001) ***CRITICAL***
+   Large peaks:  $309.71 avg path vol
+   Small peaks:  $118.25 avg path vol
+   → 161% MORE volatility needed for large peaks
+
+2. DAYS TO PEAK (Correlation: +0.5334, p<0.001) ***CRITICAL***
+   Large peaks:  10.1 days average
+   Small peaks:   4.2 days average
+   → Positions need TIME to develop
+
+3. ENTRY MOMENTUM (Return_5d: -0.1925, p=0.023) *SIGNIFICANT*
+   Best after negative return (recent pullback)
+   Worst after very strong momentum
+   → Straddles work after downturns (mean reversion)
+
+4. IV LEVEL (Vega: -0.0377, p=0.659) NOT PREDICTIVE
+   Large peaks avg vega: $154.21
+   Small peaks avg vega: $163.40
+   → Entry IV level doesn't matter
+
+5. SLOPE (Slope: +0.0740, p=0.385) NOT PREDICTIVE
+   All 140 trades have positive slope
+   → Regime filter only (uptrend only)
+
+================================================================================
+THE CRITICAL PROBLEM: EXIT FAILURE
+================================================================================
+
+WHY STRATEGY LOSES MONEY (-$2,863 net despite 83.6% positive peaks):
+
+Peak capture ratio (final P&L / peak P&L):
+  Mean:      -380.59% (extreme outliers from reversals)
+  Median:     0% (50% end at breakeven or worse)
+  Success:    38/140 trades (27.1%) capture >50% of peak
+
+Maximum drawdown after peak:
+  Mean:      -$500.22
+  Median:    -$386.00
+  Worst:     -$2,734.00
+
+EXAMPLE: Entry at -$500, peaks at +$600, exits at -$100
+  → Captured peak but held too long
+
+ROOT CAUSE: Positions stay open after peak day (day 7), experiencing:
+  1. Theta decay accelerates (gamma becomes disadvantageous)
+  2. IV crush (vega loss dominates gamma gains)
+  3. Random walk reversion (back toward ATM, losing money)
+
+================================================================================
+EXIT STRATEGY IMPLICATIONS & RECOMMENDATIONS
+================================================================================
+
+OBSERVATION: Peaks occur ~6.9 days after entry (median day 7)
+
+RECOMMENDATION 1: TIME-BASED EXIT (SIMPLEST)
+  - Exit at day 7 (when peaks occur)
+  - Expected capture: Full $311.28 average
+  - Implementation: Hard rule on calendar days
+
+RECOMMENDATION 2: PEAK-SEEKING WITH PULLBACK
+  - Track rolling max P&L daily
+  - Exit on 3-day pullback from peak
+  - Advantage: Adaptive to volatility regime
+
+RECOMMENDATION 3: P&L THRESHOLD EXIT
+  - Exit if peak-to-current exceeds $50 loss
+  - Forces capture before major reversals
+
+RECOMMENDATION 4: VOLATILITY-BASED EXIT
+  - Exit when daily volatility drops (peak event complete)
+  - Exit when path vol drops below threshold
+  - Most aligned with convexity thesis
+
+================================================================================
+ENTRY CONDITIONS: LARGE vs SMALL PEAKS
+================================================================================
+
+GREEK COMPARISON (Entry):
+  Delta:      0.1291 vs 0.1315 (identical)
+  Gamma:      0.0288 vs 0.0285 (identical)
+  Theta:     -$53.01 vs -$55.56 (identical)
+  Vega:      $154.21 vs $163.40 (5.6% difference, not significant)
+
+MARKET CONDITION COMPARISON (Entry):
+  DTE:        79.1 vs 76.8 (not different)
+  RV20:       0.1446 vs 0.1474 (not different)
+  Slope:      0.0484 vs 0.0432 (not different)
+  Return_5d:  0.0070 vs 0.0138 (not different)
+
+CONCLUSION: Entry conditions are NEARLY IDENTICAL for large vs small peaks
+  → Outcome is DETERMINED BY SUBSEQUENT MARKET BEHAVIOR, NOT ENTRY SELECTION
+  → Problem is NOT entry refinement—it's EXIT timing
+
+================================================================================
+BY THE NUMBERS: TIMING MATTERS
+================================================================================
+
+Early peaks (≤3 days):
+  - Count: 46 trades
+  - Avg peak: $71.69
+  - % reaching >$500: 4.3%
+  - Interpretation: Mostly noise/random moves, should exit quickly
+
+Late peaks (>10 days):
+  - Count: 43 trades
+  - Avg peak: $508.47
+  - % reaching >$500: 37.2%
+  - Interpretation: Confirmed moves, time to develop convexity
+
+IMPLICATION: If exit at day 3, you miss the real moves. If exit at day 10,
+you capture most peaks but also capture drawdowns from reversal.
+→ Day 7 (median) is the sweet spot
+
+================================================================================
+QUICK DIAGNOSTICS CHECKLIST
+================================================================================
+
+Q: Are entries identifying convexity correctly?
+A: YES. 83.6% of trades reach positive peaks. Entry logic works.
+
+Q: Are peaks large enough to profit?
+A: SOMETIMES. Mean $311, but 50% peak below $200. Depends on volatility.
+
+Q: Is entry selection the problem?
+A: NO. Entry conditions are identical for large vs small peaks.
+
+Q: Is exit timing the problem?
+A: YES. 73% of trades fail to capture 50% of peak. This is THE problem.
+
+Q: Can we fix this quickly?
+A: YES. Time-based exit at day 7 would be massive improvement.
+
+Q: Should we refine entry conditions?
+A: NO. Entry is working. Focus on exit.
+
+================================================================================
+NEXT STEPS (Recommended Order)
+================================================================================
+
+1. IMPLEMENT DAY-7 FIXED EXIT
+   - Replace current exit logic
+   - Measure impact on backtest results
+   - Expected: -$2,863 → ~$3,000+ (rough estimate)
+
+2. A/B TEST EXIT STRATEGIES
+   - Compare: Fixed day-7 vs Peak-seeking vs Volatility-based
+   - Measure: Capture ratio, win rate, risk metrics
+
+3. VALIDATE ACROSS REGIMES
+   - Does exit timing differ in high-vol vs low-vol markets?
+   - Should different exits apply to different regimes?
+
+4. IMPLEMENT IN LIVE TRADING
+   - Start with smallest position size
+   - Monitor capture ratios vs backtest
+   - Refine based on actual execution
+
+================================================================================
