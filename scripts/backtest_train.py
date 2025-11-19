@@ -385,12 +385,24 @@ def analyze_trades(trades: List[Dict]) -> Dict:
     peak_pnls = [t['exit']['peak_pnl'] for t in trades]
     pct_captured = [t['exit']['pct_of_peak_captured'] for t in trades]
 
+    # FIXED: Calculate aggregate capture %, not average of individual %
+    # Aggregate = (total final P&L) / (total peak P&L) shows true performance
+    # Average of individual % is misleading (one -500% outlier ruins average)
+    total_final = sum(final_pnls)
+    total_peak_positive = sum([p for p in peak_pnls if p > 0])
+
+    if total_peak_positive > 0:
+        aggregate_capture = (total_final / total_peak_positive) * 100
+    else:
+        aggregate_capture = 0
+
     summary = {
         'total_trades': len(trades),
         'total_pnl': sum(final_pnls),
-        'peak_potential': sum([p for p in peak_pnls if p > 0]),
+        'peak_potential': total_peak_positive,
         'winners': sum(1 for pnl in final_pnls if pnl > 0),
-        'avg_pct_captured': np.mean(pct_captured) if pct_captured else 0,
+        'aggregate_pct_captured': aggregate_capture,  # FIXED: Aggregate not average
+        'avg_pct_captured_per_trade': np.mean(pct_captured) if pct_captured else 0,  # Keep for reference
         'median_pct_captured': np.median(pct_captured) if pct_captured else 0,
         'avg_days_to_peak': np.mean([t['exit']['day_of_peak'] for t in trades]),
         'avg_path_volatility': np.mean([t['exit']['pnl_volatility'] for t in trades])
