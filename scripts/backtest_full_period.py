@@ -40,7 +40,7 @@ from src.analysis.trade_tracker import TradeTracker
 from src.trading.exit_engine import ExitEngine
 
 
-# TRAIN PERIOD BOUNDARIES (ENFORCED)
+# FULL PERIOD BOUNDARIES (ENFORCED)
 PERIOD_START = date(2020, 1, 1)
 PERIOD_END = date(2024, 12, 31)
 
@@ -58,7 +58,7 @@ def load_spy_data() -> pd.DataFrame:
 
     print(f"Loading SPY data with warmup period...")
     print(f"  Warmup: {warmup_start} to {PERIOD_START}")
-    print(f"  Train:  {PERIOD_START} to {PERIOD_END}")
+    print(f"  Full:  {PERIOD_START} to {PERIOD_END}")
 
     spy_files = sorted(glob.glob('/Volumes/VelocityData/velocity_om/parquet/stock/SPY/*.parquet'))
     spy_data = []
@@ -133,7 +133,7 @@ def load_spy_data() -> pd.DataFrame:
     actual_start = spy['date'].min()
     actual_end = spy['date'].max()
 
-    print(f"\n✅ TRAIN PERIOD ENFORCED")
+    print(f"\n✅ FULL PERIOD ENFORCED")
     print(f"   Expected: {PERIOD_START} to {PERIOD_END}")
     print(f"   Actual:   {actual_start} to {actual_end}")
     print(f"   Warmup days used: {len(spy_with_warmup) - len(spy)}")
@@ -283,7 +283,7 @@ def run_profile_backtest(
     """
     Run backtest for a single profile with complete trade tracking
 
-    TRAIN PERIOD ONLY - for parameter derivation
+    FULL PERIOD ONLY - for parameter derivation
     """
     print(f"\n{'='*80}")
     print(f"BACKTESTING: {profile_id} - {config['name']}")
@@ -374,7 +374,7 @@ def analyze_trades(trades: List[Dict]) -> Dict:
             'total_pnl': 0,
             'peak_potential': 0,
             'winners': 0,
-            'avg_pct_captured': 0,
+            'aggregate_pct_captured': 0,
             'median_pct_captured': 0,
             'avg_days_to_peak': 0,
             'avg_path_volatility': 0
@@ -401,7 +401,7 @@ def analyze_trades(trades: List[Dict]) -> Dict:
         'peak_potential': total_peak_positive,
         'winners': sum(1 for pnl in final_pnls if pnl > 0),
         'aggregate_pct_captured': aggregate_capture,  # FIXED: Aggregate not average
-        'avg_pct_captured_per_trade': np.mean(pct_captured) if pct_captured else 0,  # Keep for reference
+        'aggregate_pct_captured_per_trade': np.mean(pct_captured) if pct_captured else 0,  # Keep for reference
         'median_pct_captured': np.median(pct_captured) if pct_captured else 0,
         'avg_days_to_peak': np.mean([t['exit']['day_of_peak'] for t in trades]),
         'avg_path_volatility': np.mean([t['exit']['pnl_volatility'] for t in trades])
@@ -411,7 +411,7 @@ def analyze_trades(trades: List[Dict]) -> Dict:
 
 
 def main():
-    """Main execution - TRAIN PERIOD ONLY"""
+    """Main execution - FULL PERIOD ONLY"""
 
     print("\n" + "="*80)
     print("FULL PERIOD BACKTEST (2020-2024)")
@@ -463,15 +463,10 @@ def main():
     config_dir = Path('/Users/zstoc/rotation-engine/config')
     config_dir.mkdir(parents=True, exist_ok=True)
 
-    params_file = config_dir / 'train_derived_params.json'
-    print(f"\nSaving derived parameters to {params_file}...")
-    with open(params_file, 'w') as f:
-        json.dump(derived_params, f, indent=2, default=str)
-    print(f"✅ Saved: {params_file}")
 
     # Print summary
     print("\n" + "="*80)
-    print("TRAIN PERIOD SUMMARY")
+    print("FULL PERIOD SUMMARY")
     print("="*80)
 
     total_trades = 0
@@ -488,7 +483,7 @@ def main():
             print(f"  Final P&L: ${summary['total_pnl']:.0f}")
             print(f"  Peak Potential: ${summary['peak_potential']:.0f}")
             print(f"  Winners: {summary['winners']} ({summary['winners']/summary['total_trades']*100:.1f}%)")
-            print(f"  Avg % of Peak Captured: {summary['avg_pct_captured']:.1f}%")
+            print(f"  Avg % of Peak Captured: {summary['aggregate_pct_captured']:.1f}%")
             print(f"  Avg Days to Peak: {summary['avg_days_to_peak']:.1f}")
 
             total_trades += summary['total_trades']
