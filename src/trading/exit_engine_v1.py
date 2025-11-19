@@ -37,7 +37,7 @@ class ExitConfig:
     tp2_pct: Optional[float]     # Second profit target (full exit)
 
     # Condition exit function
-    condition_exit_fn: Callable[[Dict], bool]  # Function that checks market conditions
+    condition_exit_fn: Callable[[Dict, Dict, int], bool]  # Function that checks market conditions + days_held
 
 
 class ExitEngineV1:
@@ -173,7 +173,7 @@ class ExitEngineV1:
                 return (True, cfg.tp1_fraction, f"tp1_{cfg.tp1_pct:.0%}")
 
         # 4. CONDITION: Profile-specific exit conditions
-        if cfg.condition_exit_fn(market_conditions, position_greeks):
+        if cfg.condition_exit_fn(market_conditions, position_greeks, days_held):
             return (True, 1.0, "condition_exit")
 
         # 5. TIME: Max hold backstop
@@ -183,7 +183,7 @@ class ExitEngineV1:
         # No exit triggered
         return (False, 0.0, "")
 
-    def _condition_exit_profile_1(self, market: Dict, greeks: Dict) -> bool:
+    def _condition_exit_profile_1(self, market: Dict, greeks: Dict, days_held: int) -> bool:
         """
         Profile 1 (LDG) - Long-Dated Gamma condition exit
 
@@ -191,7 +191,13 @@ class ExitEngineV1:
         - Trend broken (slope_MA20 <= 0)
         - Price under MA20 (close < MA20)
         - Cheap vol thesis invalid (RV10/IV60 < 0.90)
+
+        BUG FIX: Add days_held guard to prevent Day 1 exits
         """
+        # CRITICAL FIX (BUG-001): Don't exit on Day 1-2 market noise
+        if days_held < 3:
+            return False
+
         # FIXED: Validate data exists and is not None
         slope_ma20 = market.get('slope_MA20')
         if slope_ma20 is not None and slope_ma20 <= 0:
@@ -209,7 +215,7 @@ class ExitEngineV1:
 
         return False
 
-    def _condition_exit_profile_2(self, market: Dict, greeks: Dict) -> bool:
+    def _condition_exit_profile_2(self, market: Dict, greeks: Dict, days_held: int) -> bool:
         """
         Profile 2 (SDG) - Short-Dated Gamma Spike condition exit
 
@@ -222,7 +228,7 @@ class ExitEngineV1:
         # For now, rely on time/profit targets only
         return False
 
-    def _condition_exit_profile_3(self, market: Dict, greeks: Dict) -> bool:
+    def _condition_exit_profile_3(self, market: Dict, greeks: Dict, days_held: int) -> bool:
         """
         Profile 3 (CHARM) - Theta/Decay condition exit
 
@@ -235,7 +241,7 @@ class ExitEngineV1:
         # For now, rely on profit targets
         return False
 
-    def _condition_exit_profile_4(self, market: Dict, greeks: Dict) -> bool:
+    def _condition_exit_profile_4(self, market: Dict, greeks: Dict, days_held: int) -> bool:
         """
         Profile 4 (VANNA) - Vol-Spot Correlation condition exit
 
@@ -243,7 +249,14 @@ class ExitEngineV1:
         - Trend weakening (slope_MA20 <= 0)
         - Vol no longer cheap (IV_rank_20 > 0.70) - NOT TRACKED YET
         - Vol-of-vol instability (VVIX_slope > 0) - NOT TRACKED YET
+
+        BUG FIX: Add days_held guard to prevent Day 1 exits
         """
+        # CRITICAL FIX (BUG-002): Don't exit on Day 1-2 market noise
+        # This is THE ONLY PROFITABLE PROFILE - destroying winners is catastrophic
+        if days_held < 3:
+            return False
+
         # FIXED: Validate data exists
         slope_ma20 = market.get('slope_MA20')
         if slope_ma20 is not None and slope_ma20 <= 0:
@@ -252,7 +265,7 @@ class ExitEngineV1:
         # TODO: Add IV_rank_20, VVIX tracking
         return False
 
-    def _condition_exit_profile_5(self, market: Dict, greeks: Dict) -> bool:
+    def _condition_exit_profile_5(self, market: Dict, greeks: Dict, days_held: int) -> bool:
         """
         Profile 5 (SKEW) - Fear/Skew Convexity condition exit
 
@@ -265,7 +278,7 @@ class ExitEngineV1:
         # For now, rely on profit targets
         return False
 
-    def _condition_exit_profile_6(self, market: Dict, greeks: Dict) -> bool:
+    def _condition_exit_profile_6(self, market: Dict, greeks: Dict, days_held: int) -> bool:
         """
         Profile 6 (VOV) - Vol-of-Vol Convexity condition exit
 
@@ -273,7 +286,14 @@ class ExitEngineV1:
         - VVIX not elevated (VVIX/VVIX_80pct <= 1.0) - NOT TRACKED YET
         - Vol-of-vol stopped rising (VVIX_slope <= 0) - NOT TRACKED YET
         - Compression resolved (RV10/IV20 >= 1.0) - NOT TRACKED YET
+
+        BUG FIX: Add days_held guard to prevent Day 1 exits
         """
+        # CRITICAL FIX (BUG-003): Don't exit on Day 1-4 RV ratio noise
+        # RV ratios are noisy short-term, need at least 5 days for signal
+        if days_held < 5:
+            return False
+
         # TODO: Add VVIX tracking
         # For now, rely on RV ratios we DO track
 
