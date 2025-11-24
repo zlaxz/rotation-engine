@@ -153,8 +153,13 @@ class PortfolioAggregator:
         attribution : pd.DataFrame
             Columns: profile, total_pnl, mean_daily_pnl, pnl_contribution
         """
-        # Identify profile P&L columns
-        pnl_cols = [col for col in portfolio.columns if col.endswith('_pnl') and col != 'portfolio_pnl' and col != 'cumulative_pnl']
+        # Identify profile P&L columns (exclude intermediate daily columns)
+        # FIXED Round 6: Exclude '_daily_pnl' columns to avoid double-counting
+        pnl_cols = [col for col in portfolio.columns
+                    if col.endswith('_pnl')
+                    and '_daily_' not in col
+                    and col != 'portfolio_pnl'
+                    and col != 'cumulative_pnl']
 
         attribution = []
         total_portfolio_pnl = portfolio['portfolio_pnl'].sum()

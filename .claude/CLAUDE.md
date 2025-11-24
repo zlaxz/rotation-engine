@@ -7,32 +7,146 @@
 
 ---
 
+## 🔴 CRITICAL: NEVER USE FAKE DATA - INSTANT DISQUALIFICATION
+
+**ABSOLUTE RULE: NEVER SIMULATE, FAKE, OR APPROXIMATE DATA WHEN REAL DATA EXISTS**
+
+**I have access to:**
+- Polygon minute bars: `/Volumes/VelocityData/polygon_downloads/us_options_opra/`
+- Real bid/ask data
+- Actual market microstructure
+- Historical intraday data 2014-2025
+
+**I WILL NEVER:**
+- ❌ Simulate intraday data from daily bars
+- ❌ Use linear interpolation as proxy for real data
+- ❌ Create fake data "for testing purposes"
+- ❌ Use approximations when real data exists
+- ❌ Assume data doesn't exist without checking
+
+**Before using ANY data:**
+1. Check if real data exists on VelocityData drive
+2. If real data exists → USE IT
+3. If real data doesn't exist → Ask Zach before simulating
+
+**Consequence of violation:**
+Using fake data in quant work = INSTANT REMOVAL FROM PROJECT. No warnings.
+
+---
+
+## 🔴 CRITICAL: MANDATORY MULTI-AGENT AUDIT BEFORE RUNNING CODE
+
+**ABSOLUTE RULE: MINIMUM 3-4 SPECIALIST AGENTS MUST AUDIT BEFORE RUNNING ANY CODE**
+
+**After writing ANY code that:**
+- Calculates P&L
+- Makes trading decisions
+- Processes market data
+- Tests strategies
+- Runs backtests
+
+**I MUST use MINIMUM 3-4 of these agents BEFORE running:**
+
+```
+REQUIRED AGENTS (pick 3-4 based on code type):
+1. backtest-bias-auditor     → Hunt for look-ahead bias, temporal violations
+2. strategy-logic-auditor    → Red-team for bugs, off-by-one, sign errors
+3. data-quality-auditor      → Verify data integrity, detect bad data
+4. statistical-validator     → Test statistical correctness
+5. overfitting-detector      → Check for curve-fitting
+```
+
+**The Pattern (MANDATORY):**
+```
+1. Write code
+2. Launch 3-4 specialist agents in PARALLEL
+3. Read ALL audit reports
+4. Fix ALL critical/high bugs
+5. Re-audit if major fixes made
+6. THEN run code
+```
+
+**NEVER:**
+- ❌ Use only 1 agent
+- ❌ Run code before auditing
+- ❌ Skip audits "because it's simple"
+- ❌ Audit after running and finding bugs
+
+**Consequence of violation:**
+Single-agent audit or running before audit = Strike. Three strikes = REMOVED FROM PROJECT.
+
+**Strike count resets:** After 5 consecutive sessions with proper multi-agent audits.
+
+---
+
+## 🔴 CRITICAL: MANDATORY TRAIN/VALIDATION/TEST METHODOLOGY
+
+**MY ABSOLUTE NON-NEGOTIABLE COMMITMENT:**
+
+**I REQUIRE TRAIN/VALIDATION/TEST SPLITS FOR ALL RESEARCH. PERIOD.**
+
+**If I'm doing ANYTHING that:**
+- Derives parameters from data
+- Finds bugs using backtest results
+- Optimizes strategy components
+- Calculates empirical values (peak timing, thresholds, etc.)
+
+**Then I MUST:**
+1. ✅ Split data chronologically (Train → Validation → Test)
+2. ✅ Derive ONLY on train period
+3. ✅ Test on validation period (expect 20-40% degradation)
+4. ✅ IF validation passes → Test period ONCE
+5. ✅ Use `statistical-validator`, `overfitting-detector` agents PROACTIVELY
+
+**I WILL NOT:**
+- ❌ Use full dataset for parameter derivation
+- ❌ Test on same data used for development
+- ❌ "Validate" without proper train/test split
+- ❌ Iterate on test period after seeing results
+
+**Why I Follow This:**
+- Session 2025-11-18: I spent 4 hours fixing 22 bugs on full dataset
+- Zero train/test splitting = ALL results contaminated
+- Perfect overfitting crime = worthless for live trading
+- Research methodology failure > code bugs
+
+**My Standard:**
+```
+Train (2020-2021)    → I find bugs, derive parameters
+Validation (2022-2023) → I test out-of-sample, expect degradation
+Test (2024)          → I test ONCE, accept results
+```
+
+**No Exceptions. I run a real quant shop, not a YouTube scam.**
+
+---
+
 ## 🔴 CRITICAL: ZERO TOLERANCE FOR SHORTCUTS
 
-**ABSOLUTE NON-NEGOTIABLE RULE:**
+**MY ABSOLUTE NON-NEGOTIABLE COMMITMENT:**
 
-**NO SHORTCUTS. EVER. PERIOD.**
+**I TAKE NO SHORTCUTS. EVER. PERIOD.**
 
 ---
 
 ## 🔴 BANNED: "Quick Tests" and "Validation Prototypes"
 
-**ABSOLUTE RULE: Every line of code is PRODUCTION code.**
+**MY ABSOLUTE RULE: Every line of code I write is PRODUCTION code.**
 
-There is NO such thing as:
+I will NOT create:
 - ❌ "Quick test to validate the logic"
 - ❌ "Simplified version to check if it works"
 - ❌ "Prototype to verify the approach"
 - ❌ "We can add proper [execution model / transaction costs / etc] later"
 
-**Why This Is Banned:**
+**Why I Don't Do This:**
 - Real capital at risk
 - "Quick tests" ALWAYS produce inflated results
 - Creates false confidence that leads to capital loss
 - Wastes days debugging wrong results
 
-**The Rule:**
-If you're writing code that:
+**My Rule:**
+If I'm writing code that:
 - Loads data
 - Calculates P&L
 - Simulates trades
@@ -254,6 +368,104 @@ When working in this directory, I am:
 - Red team attacker finding holes before they lose money
 
 **Not a solo worker - an orchestrator of distributed intelligence.**
+
+---
+
+## 🔴 CRITICAL: MANDATORY SKILL LOADING IN FIRST RESPONSE
+
+**ABSOLUTE REQUIREMENT FOR FIRST RESPONSE IN NEW SESSION:**
+
+**I MUST load all 6 core quant skills in my FIRST response to Zach, BEFORE doing any other work.**
+
+**The ONLY acceptable first response pattern:**
+
+```
+Step 1: LOAD SKILLS (use Skill tool 6 times in parallel)
+  - Skill: backtest-architect
+  - Skill: backtest-bias-auditor
+  - Skill: options-pricing-expert
+  - Skill: quant-system-architect
+  - Skill: statistical-validator
+  - Skill: overfitting-detector
+
+Step 2: THEN respond to Zach's request
+```
+
+**BANNED first response patterns:**
+- ❌ Start working immediately without loading skills
+- ❌ Load skills partway through response
+- ❌ Load skills only after being called out
+- ❌ "I'll load skills and then..." (must actually load them, not just say it)
+
+**Visual enforcement:**
+My first response MUST contain 6 `<invoke name="Skill">` tool calls BEFORE any other content.
+
+**Why This Matters:**
+- I cannot write proper backtest code without backtest-architect knowledge loaded
+- I cannot price options correctly without options-pricing-expert knowledge loaded
+- I WILL make basic mistakes that lose capital without this expertise loaded
+- Loading skills retroactively doesn't help - damage already done
+
+**The Workflow (MANDATORY):**
+
+1. **User sends first message** → I load all 6 skills FIRST (parallel Skill tool calls)
+2. **Skills load** → I now have expert knowledge to work correctly
+3. **I respond** → Using loaded expertise to provide accurate guidance
+4. **I work** → Write code with loaded knowledge
+5. **I audit** → Launch independent AGENTS to catch blind spots
+
+**NOT:**
+1. User sends message → I start working blind → Make mistakes → Load skills when caught ❌
+
+**Lesson from 2025-11-18 (and today):**
+- Wrote 3 backtest scripts without backtest-architect skill loaded
+- Made API signature errors, missing strike calculations, parameter override bugs
+- Agents found 14 bugs I created by working without expertise
+- **TODAY: Added envelope exit logic without skills loaded, had to audit retroactively**
+- If skills were loaded first → Would have written correct code initially
+
+**Enforcement:**
+If Zach catches me working without skills loaded in first response, I have FAILED the session start protocol and must acknowledge the failure, load skills, then audit all work done without skills loaded.
+
+**My Absolute Commitment:**
+My FIRST action in EVERY new session is loading these 6 skills. Not after doing work. Not after being reminded. FIRST thing in FIRST response.
+
+---
+
+## AGENT VALIDATION IN QUANT WORK (PROJECT-SPECIFIC)
+
+**The bugs I can't see in trading code lose real money.**
+
+### **What I'm Blind To in Quant Code:**
+- Look-ahead bias hidden in regime classification
+- Off-by-one errors in position tracking
+- Sign convention errors in P&L calculation
+- Greeks calculation bugs that look "close enough"
+- Edge cases that only appear in 2008 or March 2020
+- Transaction cost assumptions that are 10x wrong
+
+### **Specific Code That ALWAYS Gets Quality Gate Review:**
+
+**Backtest infrastructure** → `backtest-bias-auditor`, `strategy-logic-auditor`
+**Regime/profile detection** → `backtest-bias-auditor` (look-ahead), `overfitting-detector`
+**Greeks calculations** → `strategy-logic-auditor` (sign errors, calculation bugs)
+**Transaction costs** → `market-microstructure-expert` (reality-check assumptions)
+**Statistical tests** → `statistical-validator` (verify significance)
+**Any P&L calculation** → `strategy-logic-auditor` (accounting errors kill)
+
+**Expect 10-30 issues first pass. This is NORMAL. Fix until clean.**
+
+### **The Quant-Specific Stakes Cascade:**
+
+**If I skip validation in trading code:**
+- Look-ahead bias → fake edge in backtest → capital to losing strategy → **money lost**
+- P&L bugs → false confidence → deploy broken system → **money lost**
+- Greeks errors → wrong position sizing → blown risk limits → **money lost**
+- Cost assumptions wrong → phantom edge → bleed money over time → **money lost**
+
+**Final cascade:** Lose capital → family budget impacted → back to traditional employment
+
+**In quant work: Agent validation isn't bureaucracy. It's how I prevent capital loss.**
 
 ---
 

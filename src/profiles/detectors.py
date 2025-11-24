@@ -64,9 +64,10 @@ class ProfileDetectors:
         df['profile_6_VOV'] = self._compute_vov_score(df)
 
         # 3. Apply EMA smoothing to noisy profiles (SDG, SKEW)
-        # EMA with span=3 provides smoothing while maintaining responsiveness
-        df['profile_2_SDG'] = df['profile_2_SDG_raw'].ewm(span=3, adjust=False).mean()
-        df['profile_5_SKEW'] = df['profile_5_SKEW_raw'].ewm(span=3, adjust=False).mean()
+        # BUG FIX (2025-11-18): Agent #3 found span=3 too short, causes noise
+        # Increased to span=7 for better noise reduction
+        df['profile_2_SDG'] = df['profile_2_SDG_raw'].ewm(span=7, adjust=False).mean()
+        df['profile_5_SKEW'] = df['profile_5_SKEW_raw'].ewm(span=7, adjust=False).mean()
 
         # Drop raw columns
         df = df.drop(columns=['profile_2_SDG_raw', 'profile_5_SKEW_raw'])
@@ -164,7 +165,8 @@ class ProfileDetectors:
         factor1 = sigmoid((rv_iv_ratio - 0.8) * 5)
 
         # Factor 2: Large daily moves (relative to recent range)
-        move_size = df['ret_1d'] / (df['ATR5'] / df['close'] + 1e-6)
+        # BUG FIX (2025-11-18): Agent #3 found - missing abs() for move_size
+        move_size = abs(df['ret_1d']) / (df['ATR5'] / df['close'] + 1e-6)
         factor2 = sigmoid((move_size - 1.0) * 3)
 
         # Factor 3: VVIX rising (vol-of-vol increasing)
@@ -229,7 +231,9 @@ class ProfileDetectors:
             Score in [0, 1]
         """
         # Factor 1: Low IV rank (cheap vol)
-        factor1 = sigmoid(-df['IV_rank_20'] * 5 + 2.5)  # High when rank near 0
+        # BUG FIX (2025-11-18): Agent #3 found wrong sign - correcting formula
+        # Want high score when IV_rank < 0.3 (cheap vol)
+        factor1 = sigmoid((0.3 - df['IV_rank_20']) * 5)  # High when rank < 0.3
 
         # Factor 2: Upward trend
         factor2 = sigmoid(df['slope_MA20'] * 100)

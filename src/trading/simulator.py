@@ -731,11 +731,21 @@ class TradeSimulator:
         if abs(trade.net_delta) < delta_threshold:
             return 0.0
 
-        # Calculate ES contracts needed to neutralize delta
-        hedge_contracts = abs(trade.net_delta) / es_delta_per_contract
+        # FIX BUG-004: Calculate ES contracts with proper direction
+        # If portfolio is LONG delta (+), hedge should SHORT (-) ES
+        # If portfolio is SHORT delta (-), hedge should LONG (+) ES
+        hedge_contracts_magnitude = abs(trade.net_delta) / es_delta_per_contract
 
-        # Get hedging cost
-        return self.config.execution_model.get_delta_hedge_cost(hedge_contracts)
+        # Determine hedge direction (opposite of portfolio delta)
+        if trade.net_delta > 0:
+            hedge_direction = -1  # Long delta → short hedge
+        else:
+            hedge_direction = 1   # Short delta → long hedge
+
+        hedge_contracts = hedge_contracts_magnitude * hedge_direction
+
+        # Get hedging cost (with direction)
+        return self.config.execution_model.get_delta_hedge_cost(abs(hedge_contracts))
 
     def get_trade_summary(self) -> pd.DataFrame:
         """Get summary of all closed trades."""

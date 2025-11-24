@@ -4,6 +4,12 @@ data/backtest_results/runs/*/results.json
 data/raw/
 data/processed/
 
+# Archived large result files
+archive/**/results.json
+archive/**/full_tracking_results.json
+archive/**/intraday/**/*.json
+archive/**/*_intraday_*.json
+
 # Python
 __pycache__/
 *.py[cod]

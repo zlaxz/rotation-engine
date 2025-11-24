@@ -80,18 +80,32 @@ class TradeTracker:
             opt_type = leg['type']
             qty = leg['qty']
 
-            price = self.polygon.get_option_price(
-                entry_date, position['strike'], position['expiry'], opt_type, 'mid'
-            )
+            # FIX BUG-001 (SYSTEMIC): Get execution prices (ask/bid), not mid+spread
+            # This matches how Simulator.py gets prices (lines 424-429)
+            if qty > 0:
+                # Long: pay the ask
+                price = self.polygon.get_option_price(
+                    entry_date, position['strike'], position['expiry'], opt_type, 'ask'
+                )
+            else:
+                # Short: receive the bid
+                price = self.polygon.get_option_price(
+                    entry_date, position['strike'], position['expiry'], opt_type, 'bid'
+                )
+
             if price is None:
                 return None
 
             entry_prices[opt_type] = price
-            # Cost: positive for buying, negative for selling
-            leg_cost = qty * (price + (spread if qty > 0 else -spread)) * 100
+
+            # Entry cost calculation (price already includes spread via ask/bid)
+            # For long (qty > 0): positive = cash outflow (we paid ask)
+            # For short (qty < 0): negative = cash inflow (we received bid)
+            leg_cost = qty * price * 100
+
             entry_cost += leg_cost
 
-        entry_cost += commission
+        entry_cost += commission  # Commission is always a cost (positive addition)
 
         # Calculate entry Greeks
         entry_greeks = self._calculate_position_greeks(
@@ -143,16 +157,26 @@ class TradeTracker:
                 opt_type = leg['type']
                 qty = leg['qty']
 
-                price = self.polygon.get_option_price(
-                    day_date, position['strike'], position['expiry'], opt_type, 'mid'
-                )
+                # FIXED: Use consistent ask/bid pricing (same as entry)
+                # Long positions would exit at bid (selling), short at ask (buying to cover)
+                if qty > 0:
+                    # Long: exit at bid (we're selling)
+                    price = self.polygon.get_option_price(
+                        day_date, position['strike'], position['expiry'], opt_type, 'bid'
+                    )
+                else:
+                    # Short: exit at ask (we're buying to cover)
+                    price = self.polygon.get_option_price(
+                        day_date, position['strike'], position['expiry'], opt_type, 'ask'
+                    )
+
                 if price is None:
                     # If we can't get price, stop tracking
                     break
 
                 current_prices[opt_type] = price
-                # MTM: value if closed now (pay spread on exit)
-                exit_value = qty * (price - (spread if qty > 0 else -spread)) * 100
+                # MTM: value if closed now at bid/ask (no spread adjustment needed - already in price)
+                exit_value = qty * price * 100
                 mtm_value += exit_value
 
             if not current_prices:
@@ -198,17 +222,28 @@ class TradeTracker:
         exit_snapshot = daily_path[-1]
         days_held = len(daily_path) - 1
 
-        # Find day of peak
-        day_of_peak = 0
-        for i, day in enumerate(daily_path):
-            if day['mtm_pnl'] == peak_pnl:
-                day_of_peak = i
-                break
+        # Find day of peak (FIXED: use max() to avoid floating-point equality issues)
+        if daily_path:
+            day_of_peak = max(range(len(daily_path)), key=lambda i: daily_path[i]['mtm_pnl'])
+        else:
+            day_of_peak = 0
 
         # Calculate path statistics
         pnl_series = [d['mtm_pnl'] for d in daily_path]
         pnl_volatility = float(np.std(pnl_series)) if len(pnl_series) > 1 else 0.0
         positive_days = sum(1 for pnl in pnl_series if pnl > 0)
+
+        # FIXED: Handle division by zero and negative peak scenarios
+        if peak_pnl > 0:
+            # Winning trade: standard percentage
+            pct_captured = float(exit_snapshot['mtm_pnl'] / peak_pnl * 100)
+        elif peak_pnl < 0:
+            # Losing trade: calculate recovery percentage
+            # How much of the loss was recovered from worst point?
+            pct_captured = float((exit_snapshot['mtm_pnl'] - peak_pnl) / abs(peak_pnl) * 100)
+        else:
+            # peak_pnl == 0 (broke even at best)
+            pct_captured = 0.0
 
         exit_analytics = {
             'exit_date': exit_snapshot['date'],
@@ -216,7 +251,7 @@ class TradeTracker:
             'final_pnl': exit_snapshot['mtm_pnl'],
             'peak_pnl': float(peak_pnl),
             'max_drawdown': float(max_dd),
-            'pct_of_peak_captured': float((exit_snapshot['mtm_pnl'] / peak_pnl * 100) if peak_pnl > 0 else 0),
+            'pct_of_peak_captured': pct_captured,
             'day_of_peak': day_of_peak,
             'days_after_peak': days_held - day_of_peak,
             'peak_to_exit_decay': float(exit_snapshot['mtm_pnl'] - peak_pnl),
@@ -253,18 +288,26 @@ class TradeTracker:
         # Estimate risk-free rate and volatility
         r = 0.04  # 4% risk-free rate
 
-        # Estimate IV from option price (simple approach)
-        iv = 0.20  # Default
+        # Estimate IV from option price (improved heuristic)
+        # FIXED: Better IV estimation using Brenner-Subrahmanyam approximation
+        iv = 0.20  # Default fallback
         for leg in legs:
             opt_type = leg['type']
             if opt_type in prices:
                 price = prices[opt_type]
-                # Back out IV from price (simplified - just use ATM vol estimate)
-                if abs(strike - spot) / spot < 0.02:  # Near ATM
-                    iv = max(0.10, price / spot * np.sqrt(365 / dte) * 2)
-                    break
+                moneyness = abs(strike - spot) / spot
+
+                # Brenner-Subrahmanyam approximation for ATM options
+                if moneyness < 0.05:  # Near ATM
+                    iv = price / spot * np.sqrt(2 * np.pi / (dte / 365.0))
+                    iv = np.clip(iv, 0.05, 2.0)  # Realistic bounds: 5% to 200%
+                else:  # OTM options - use conservative estimate
+                    iv = price / spot * np.sqrt(2 * np.pi / (dte / 365.0)) * 1.5
+                    iv = np.clip(iv, 0.05, 3.0)
+                break
 
         # Calculate Greeks for each leg and sum
+        CONTRACT_MULTIPLIER = 100  # FIX BUG-002: Options represent 100 shares per contract
         net_greeks = {'delta': 0, 'gamma': 0, 'theta': 0, 'vega': 0}
 
         for leg in legs:
@@ -275,11 +318,11 @@ class TradeTracker:
                 spot, strike, dte / 365.0, r, iv, opt_type
             )
 
-            # Scale by quantity (positive = long, negative = short)
-            net_greeks['delta'] += greeks['delta'] * qty
-            net_greeks['gamma'] += greeks['gamma'] * qty
-            net_greeks['theta'] += greeks['theta'] * qty
-            net_greeks['vega'] += greeks['vega'] * qty
+            # Scale by quantity (positive = long, negative = short) AND contract multiplier
+            net_greeks['delta'] += greeks['delta'] * qty * CONTRACT_MULTIPLIER
+            net_greeks['gamma'] += greeks['gamma'] * qty * CONTRACT_MULTIPLIER
+            net_greeks['theta'] += greeks['theta'] * qty * CONTRACT_MULTIPLIER
+            net_greeks['vega'] += greeks['vega'] * qty * CONTRACT_MULTIPLIER
 
         return {k: float(v) for k, v in net_greeks.items()}
 

@@ -25,6 +25,7 @@ from typing import Dict, List
 
 from src.data.polygon_options import PolygonOptionsLoader
 from src.analysis.trade_tracker import TradeTracker
+from src.trading.exit_engine import ExitEngine
 
 
 def load_spy_data() -> pd.DataFrame:
@@ -192,6 +193,7 @@ def run_profile_backtest(
     config: Dict,
     spy: pd.DataFrame,
     tracker: TradeTracker,
+    exit_engine: ExitEngine,
     min_days_between_trades: int = 7
 ) -> List[Dict]:
     """
@@ -210,10 +212,13 @@ def run_profile_backtest(
     print(f"\n{'='*80}")
     print(f"BACKTESTING: {profile_id} - {config['name']}")
     print(f"{'='*80}")
+    # Phase 1: Get profile-specific exit day
+    exit_day = exit_engine.get_exit_day(profile_id)
+
     print(f"Entry condition: {config['description']}")
     print(f"Structure: {config['structure']}")
     print(f"Target DTE: {config['dte_target']}")
-    print(f"Tracking window: 14 days\n")
+    print(f"Exit strategy: Phase 1 - Day {exit_day} (empirical peak timing)\n")
 
     trades = []
     last_entry_date = None
@@ -259,12 +264,12 @@ def run_profile_backtest(
             'legs': config['legs']
         }
 
-        # Track complete trade
+        # Track complete trade (using profile-specific exit day)
         trade_record = tracker.track_trade(
             entry_date=entry_date,
             position=position,
             spy_data=spy,
-            max_days=14
+            max_days=exit_day
         )
 
         if trade_record:
@@ -326,6 +331,11 @@ def main():
     polygon = PolygonOptionsLoader()
     tracker = TradeTracker(polygon)
 
+    # Phase 1: Initialize Exit Engine with empirical peak timing
+    exit_engine = ExitEngine(phase=1)
+    print(f"\n✅ Using Exit Engine Phase 1 (time-based exits)")
+    print(f"   Exit days: {exit_engine.get_all_exit_days()}\n")
+
     # Get profile configs
     profiles = get_profile_configs()
 
@@ -333,7 +343,7 @@ def main():
     all_results = {}
 
     for profile_id, config in profiles.items():
-        trades = run_profile_backtest(profile_id, config, spy, tracker)
+        trades = run_profile_backtest(profile_id, config, spy, tracker, exit_engine)
         summary = analyze_trades(trades)
 
         all_results[profile_id] = {

@@ -162,8 +162,12 @@ class RotationAllocator:
         total = sum(desirability.values())
 
         if total == 0:
-            # No desirable profiles - return zeros
-            return {k: 0.0 for k in desirability.keys()}
+            # BUG FIX Round 8: No desirable profiles happens during warmup (all profile scores = 0)
+            # Returning all zeros causes zero allocation (portfolio holds cash)
+            # Instead, allocate equally across all profiles (baseline)
+            # This ensures portfolio is always deployed while profiles are warming up
+            equal_weight = 1.0 / len(desirability)
+            return {k: equal_weight for k in desirability.keys()}
 
         return {k: v / total for k, v in desirability.items()}
 
@@ -210,11 +214,7 @@ class RotationAllocator:
             self.max_profile_weight
         )
 
-        # Step 2: Apply minimum threshold (zero out noise)
-        # This happens AFTER capping, and we accept sum < 1.0 (cash position)
-        weight_array[weight_array < self.min_profile_weight] = 0.0
-
-        # Step 3: Apply VIX scaling (reduce exposure in high vol)
+        # Step 2: Apply VIX scaling (reduce exposure in high vol)
         # Scale down ALL weights proportionally, accept sum < 1.0 (hold cash)
         # DO NOT renormalize after scaling - that would violate cap constraint
         if rv20 > self.vix_scale_threshold:
@@ -273,22 +273,25 @@ class RotationAllocator:
             weights[violations] = max_cap
             capped[violations] = True  # Mark as capped
 
-            # Find uncapped profiles with non-zero weight
+            # Find uncapped profiles (doesn't matter if they have weight or not)
             # Must NOT have been capped in this or previous iterations
-            uncapped = ~capped & (weights > 0)
+            # BUG FIX Round 8: Distribute to ALL uncapped, not just those with existing weight
+            # This prevents losing capital when one profile hits cap and others are at zero
+            uncapped = ~capped
 
             if not uncapped.any():
                 # All profiles capped, can't redistribute
                 # Accept sum < 1.0 (holding cash)
                 break
 
-            # Redistribute excess proportionally to uncapped profiles
-            uncapped_sum = weights[uncapped].sum()
-            if uncapped_sum > 0:
-                redistribution = excess * (weights[uncapped] / uncapped_sum)
-                weights[uncapped] += redistribution
+            # Redistribute excess evenly to ALL uncapped profiles
+            # If some have zero weight, they get the redistribution (becomes their initial weight)
+            uncapped_count = uncapped.sum()
+            if uncapped_count > 0:
+                redistribution_per_profile = excess / uncapped_count
+                weights[uncapped] += redistribution_per_profile
             else:
-                # Edge case: uncapped profiles have zero weight
+                # Should not reach here (uncapped.any() was checked above)
                 break
 
         # Ensure sum <= 1.0 (should already be true, but safety check)
@@ -302,7 +305,8 @@ class RotationAllocator:
         self,
         profile_scores: Dict[str, float],
         regime: int,
-        rv20: float
+        rv20: float,
+        is_warmup: bool = False
     ) -> Dict[str, float]:
         """
         Full allocation pipeline: scores → desirability → weights → constraints.
@@ -386,22 +390,22 @@ class RotationAllocator:
                 # Convert 'profile_1_score' → 'profile_1'
                 profile_name = col.replace('_score', '')
                 score_value = row[col]
-                # Handle NaN/None - RAISE ERROR instead of silent 0
+                # Handle NaN/None - CRITICAL BUG FIX Round 8
                 if pd.isna(score_value):
-                    # Check if we're in warmup period
+                    # NaN during warmup is EXPECTED - specific profiles warm up at different rates
+                    # Example: profile_6_VOV needs 30+ days to compute vol-of-vol
+                    # During warmup, we treat missing profiles as "not expressing this edge" = score 0
+                    # This allows allocation to proceed while waiting for other profiles to warm up
                     row_index = idx
-                    if row_index < 90:  # Warmup period
-                        # NaN in warmup is expected - skip allocation
-                        raise ValueError(
-                            f"Cannot allocate capital during warmup period (row {row_index}). "
-                            f"Profile score {col} is NaN. "
-                            f"Call allocate_weights() with data starting after warmup."
-                        )
+                    if row_index < 150:
+                        # First 150 rows (warmup for slowest profile, profile_6_VOV)
+                        # Replace NaN with 0 = "this edge isn't ready yet" = no allocation to this profile
+                        profile_scores[profile_name] = 0.0
                     else:
-                        # NaN post-warmup is CRITICAL ERROR
+                        # Post-warmup NaN is CRITICAL ERROR
                         raise ValueError(
                             f"CRITICAL: Profile score {col} is NaN at date {date} (row {row_index}). "
-                            f"This indicates missing/corrupt data. NaN must not reach allocation logic. "
+                            f"This indicates missing/corrupt data after warmup period. "
                             f"Check data quality and feature engineering."
                         )
                 else:

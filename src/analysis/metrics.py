@@ -21,7 +21,7 @@ class PerformanceMetrics:
     Calculate comprehensive performance metrics for portfolio.
     """
 
-    def __init__(self, annual_factor: float = 252):
+    def __init__(self, annual_factor: float = 252, starting_capital: float = 100000.0):
         """
         Initialize metrics calculator.
 
@@ -29,8 +29,12 @@ class PerformanceMetrics:
         -----------
         annual_factor : float
             Trading days per year for annualization (default 252)
+        starting_capital : float
+            Initial portfolio capital for calculating returns (default 100,000)
+            CRITICAL: Must match actual starting capital for accurate metrics
         """
         self.annual_factor = annual_factor
+        self.starting_capital = starting_capital
 
     def calculate_all(
         self,
@@ -88,10 +92,13 @@ class PerformanceMetrics:
         """
         Calculate annualized Sharpe ratio.
 
+        BUG FIX (2025-11-18): Handle both P&L (dollars) and returns (percentages)
+        Agent #9 found: Function was receiving dollar P&L but treating as returns
+
         Parameters:
         -----------
         returns : pd.Series
-            Daily returns
+            Daily returns OR daily P&L (auto-detected)
         risk_free_rate : float
             Annual risk-free rate (default 0.0)
 
@@ -100,9 +107,30 @@ class PerformanceMetrics:
         sharpe : float
             Annualized Sharpe ratio
         """
-        excess_returns = returns - (risk_free_rate / self.annual_factor)
+        # AUTO-DETECT: If values > 1.0, likely dollar P&L not percentage returns
+        # Convert P&L to returns if needed
+        if returns.abs().mean() > 1.0:
+            # Input is dollar P&L - convert to returns
+            # FIX BUG-METRICS-001: Use actual starting_capital, not hardcoded 100K
+            cumulative_portfolio_value = self.starting_capital + returns.cumsum()
+            # Calculate percentage returns from portfolio value
+            returns_pct = cumulative_portfolio_value.pct_change().dropna()
 
-        if excess_returns.std() == 0:
+            # FIXED Round 6: pct_change() loses first return (no prior value to compare)
+            # Must manually add first return to avoid missing day 1 P&L
+            if len(returns) > 0:
+                first_return = returns.iloc[0] / self.starting_capital
+                returns_pct = pd.concat([
+                    pd.Series([first_return], index=[returns.index[0]]),
+                    returns_pct
+                ])
+        else:
+            # Input is already percentage returns
+            returns_pct = returns
+
+        excess_returns = returns_pct - (risk_free_rate / self.annual_factor)
+
+        if excess_returns.std() == 0 or len(excess_returns) == 0:
             return 0.0
 
         return (excess_returns.mean() / excess_returns.std()) * np.sqrt(self.annual_factor)
@@ -116,10 +144,13 @@ class PerformanceMetrics:
         """
         Calculate annualized Sortino ratio (downside deviation).
 
+        BUG FIX (2025-11-18): Convert P&L to returns if needed, fix downside deviation calc
+        Agent #9 found: Same P&L vs returns issue as Sharpe, plus downside deviation error
+
         Parameters:
         -----------
         returns : pd.Series
-            Daily returns
+            Daily returns OR daily P&L (auto-detected)
         risk_free_rate : float
             Annual risk-free rate
         target : float
@@ -130,13 +161,31 @@ class PerformanceMetrics:
         sortino : float
             Annualized Sortino ratio
         """
-        excess_returns = returns - (risk_free_rate / self.annual_factor)
-        downside_returns = returns[returns < target] - target
+        # AUTO-DETECT: Convert P&L to returns if needed (same as Sharpe)
+        if returns.abs().mean() > 1.0:
+            # FIX BUG-METRICS-002: Use actual starting_capital, not hardcoded 100K
+            cumulative_portfolio_value = self.starting_capital + returns.cumsum()
+            returns_pct = cumulative_portfolio_value.pct_change().dropna()
 
-        if len(downside_returns) == 0 or downside_returns.std() == 0:
-            return 0.0
+            # FIXED Round 6: pct_change() loses first return (no prior value to compare)
+            # Must manually add first return to avoid missing day 1 P&L
+            if len(returns) > 0:
+                first_return = returns.iloc[0] / self.starting_capital
+                returns_pct = pd.concat([
+                    pd.Series([first_return], index=[returns.index[0]]),
+                    returns_pct
+                ])
+        else:
+            returns_pct = returns
 
+        excess_returns = returns_pct - (risk_free_rate / self.annual_factor)
+
+        # Calculate downside deviation correctly: use all returns, take min(ret-target, 0)
+        downside_returns = np.minimum(returns_pct - target, 0)
         downside_std = np.sqrt((downside_returns ** 2).mean())
+
+        if downside_std == 0 or len(returns_pct) == 0:
+            return 0.0
 
         return (excess_returns.mean() / downside_std) * np.sqrt(self.annual_factor)
 
@@ -186,27 +235,47 @@ class PerformanceMetrics:
         cumulative_pnl: pd.Series
     ) -> float:
         """
-        Calculate Calmar ratio (return / max drawdown).
+        Calculate Calmar ratio (CAGR / max drawdown percentage).
+
+        BUG FIX (2025-11-18): Use percentage-based CAGR vs percentage drawdown
+        Agent #9 found: Unit mismatch (dollars vs dollars) instead of (% vs %)
 
         Parameters:
         -----------
         returns : pd.Series
-            Daily returns
+            Daily returns OR daily P&L (auto-detected)
         cumulative_pnl : pd.Series
             Cumulative P&L
 
         Returns:
         --------
         calmar : float
-            Calmar ratio
+            Calmar ratio (percentage-based)
         """
-        annual_return = returns.mean() * self.annual_factor
-        max_dd = abs(self.max_drawdown(cumulative_pnl))
-
-        if max_dd == 0:
+        if len(cumulative_pnl) < 2:
             return 0.0
 
-        return annual_return / max_dd
+        # FIX BUG-METRICS-003: CAGR calculation needs portfolio value, not cumulative P&L
+        # cumulative_pnl is cumulative profit (starts at 0), not portfolio value
+        # Portfolio value = starting_capital + cumulative_pnl
+        starting_value = self.starting_capital
+        ending_value = self.starting_capital + cumulative_pnl.iloc[-1]
+
+        if starting_value <= 0:
+            return 0.0
+
+        total_return = (ending_value / starting_value) - 1
+        years = len(cumulative_pnl) / self.annual_factor
+        cagr = (1 + total_return) ** (1 / years) - 1 if years > 0 else total_return
+
+        # Get max drawdown percentage (calculate from portfolio value, not cumulative P&L)
+        portfolio_value = self.starting_capital + cumulative_pnl
+        max_dd_pct = abs(self.max_drawdown_pct(portfolio_value))
+
+        if max_dd_pct == 0 or np.isnan(max_dd_pct):
+            return 0.0
+
+        return cagr / max_dd_pct
 
     def win_rate(self, returns: pd.Series) -> float:
         """
@@ -267,21 +336,22 @@ class PerformanceMetrics:
         drawdown = cumulative_pnl - running_max
 
         # Find maximum drawdown period
-        max_dd_idx = drawdown.idxmin()
+        # BUG FIX (2025-11-18): Final audit - use argmin() for position, not idxmin()
+        max_dd_position = drawdown.argmin()  # Returns integer position
         max_dd_value = drawdown.min()
 
         # Find when max DD started
         dd_start_idx = None
-        for i in range(max_dd_idx + 1):
-            if cumulative_pnl.iloc[i] == running_max.iloc[max_dd_idx]:
+        for i in range(max_dd_position + 1):
+            if cumulative_pnl.iloc[i] == running_max.iloc[max_dd_position]:
                 dd_start_idx = i
                 break
 
         # Find recovery (if any)
         recovery_idx = None
-        if max_dd_idx < len(cumulative_pnl) - 1:
-            for i in range(max_dd_idx + 1, len(cumulative_pnl)):
-                if cumulative_pnl.iloc[i] >= running_max.iloc[max_dd_idx]:
+        if max_dd_position < len(cumulative_pnl) - 1:
+            for i in range(max_dd_position + 1, len(cumulative_pnl)):
+                if cumulative_pnl.iloc[i] >= running_max.iloc[max_dd_position]:
                     recovery_idx = i
                     break
 
@@ -295,7 +365,7 @@ class PerformanceMetrics:
 
         return {
             'max_dd_value': max_dd_value,
-            'max_dd_date': cumulative_pnl.index[max_dd_idx] if hasattr(cumulative_pnl.index[max_dd_idx], 'date') else max_dd_idx,
+            'max_dd_date': cumulative_pnl.index[max_dd_position] if hasattr(cumulative_pnl.index[max_dd_position], 'date') else max_dd_position,
             'dd_recovery_days': recovery_days,
             'dd_recovered': recovered,
             'avg_drawdown': drawdown[drawdown < 0].mean(),

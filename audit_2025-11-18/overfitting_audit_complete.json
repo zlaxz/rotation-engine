@@ -1,0 +1,601 @@
+{
+  "audit_metadata": {
+    "audit_date": "2025-11-18T10:47:43.743395",
+    "system": "Rotation Engine (6 Regimes \u00d7 6 Convexity Profiles)",
+    "audit_scope": "Parameter count, regime definition, profile detectors, rotation logic",
+    "data_period": "2020-01-02 to 2024-12-31",
+    "backtest_results": {
+      "total_trades": 604,
+      "approximate_trading_days": 1008,
+      "win_rate": 0.459,
+      "capture_rate": 0.003,
+      "total_pnl": 1030.2,
+      "peak_potential": 348896.6,
+      "validation_verdict": "NOT statistically significant (p=0.485), walk-forward FAILED"
+    }
+  },
+  "parameter_inventory": {
+    "regime_classifier": {
+      "count": 9,
+      "parameters": [
+        "trend_threshold (0.02)",
+        "compression_range (0.035)",
+        "rv_rank_low (0.30)",
+        "rv_rank_high (0.80)",
+        "rv_rank_mid_low (0.40)",
+        "rv_rank_mid_high (0.60)",
+        "extreme_rv_threshold (0.40)",
+        "vov_ratio_factor (0.3)",
+        "slope_threshold (0.005)"
+      ]
+    },
+    "profile_detectors_sigmoids": {
+      "count": 19,
+      "parameters": [
+        "Profile 1: 3 sigmoid k values (5, 5, 100x)",
+        "Profile 2: 3 sigmoid k values (5, 3, 1000x)",
+        "Profile 3: 3 sigmoid k values (5, 100x, 1000x)",
+        "Profile 4: 3 sigmoid k values (5, 100x, 1000x)",
+        "Profile 5: 3 sigmoid k values (2, 1000x, 5)",
+        "Profile 6: 4 sigmoid k values (5, 1000x, 5, 5)"
+      ]
+    },
+    "profile_score_thresholds": {
+      "count": 12,
+      "parameters": [
+        "Profile 1: RV/IV (0.9), IV_rank (0.4)",
+        "Profile 2: RV/IV (0.8), move_size (1.0)",
+        "Profile 3: IV/RV (1.4), range (0.035)",
+        "Profile 4: IV_rank (0.3)",
+        "Profile 5: skew_z (1.0), RV/IV (1.0)",
+        "Profile 6: VVIX (1.0), IV_rank (0.5), RV/IV (1.0)"
+      ]
+    },
+    "feature_engineering": {
+      "count": 16,
+      "parameters": [
+        "lookback_percentile (60)",
+        "IV7/IV20/IV60 VIX scalings (0.85, 0.95, 1.08)",
+        "IV_rank windows (60, 90)",
+        "VVIX window (20, min_periods=10)",
+        "VVIX percentile window (60, min=20)",
+        "VVIX slope window (5, min=3)",
+        "Skew proxy window (60, min=20)",
+        "EMA span SDG/SKEW (7, 7)"
+      ]
+    },
+    "rotation_engine": {
+      "count": 4,
+      "parameters": [
+        "max_profile_weight (0.40)",
+        "min_profile_weight (0.05)",
+        "vix_scale_threshold (0.30)",
+        "vix_scale_factor (0.50)"
+      ]
+    },
+    "regime_compatibility_matrix": {
+      "count": 36,
+      "description": "6 regimes \u00d7 6 profiles = 36 compatibility weights (values: 0.0 to 1.0)"
+    },
+    "total_parameters": 60,
+    "observations_per_parameter": {
+      "by_trades": 0.1,
+      "by_trading_days": 0.06,
+      "assessment": "LOW DENSITY - Good parameter-to-observation ratio"
+    }
+  },
+  "regime_classification_analysis": {
+    "regime_count": 6,
+    "assessment": "REASONABLE - 6 regimes is standard for options trading, well-established framework",
+    "regime_definitions": {
+      "Regime 1": {
+        "name": "Trend Up",
+        "criteria": [
+          "20-day return > +2%",
+          "Price above MA20 & MA50",
+          "MA20 slope positive",
+          "RV percentile < 40%"
+        ],
+        "hardcoded": true,
+        "parameter_precision": "2 decimal places (0.02) - REASONABLE"
+      },
+      "Regime 2": {
+        "name": "Trend Down",
+        "criteria": [
+          "20-day return < -2%",
+          "Price below MA20 & MA50",
+          "MA20 slope negative",
+          "RV percentile > 50%"
+        ],
+        "hardcoded": true,
+        "parameter_precision": "2 decimal places - REASONABLE"
+      },
+      "Regime 3": {
+        "name": "Vol Compression/Pinned",
+        "criteria": [
+          "10-day range < 3.5%",
+          "RV percentile < 30%",
+          "Slope abs < 0.005"
+        ],
+        "hardcoded": true,
+        "suspicious_params": [
+          "0.035",
+          "0.005"
+        ],
+        "note": "Range threshold (0.035) is suspiciously precise - 3.5% vs round 3% or 4%"
+      },
+      "Regime 4": {
+        "name": "Breaking Vol",
+        "criteria": [
+          "RV percentile > 80%",
+          "Extreme RV > 40% OR vol-of-vol > 0.3 \u00d7 RV"
+        ],
+        "hardcoded": true,
+        "suspicious_params": [
+          "0.40",
+          "0.3"
+        ],
+        "note": "RV > 0.40 threshold seems round; vol-of-vol ratio (0.3) is suspiciously precise"
+      },
+      "Regime 5": {
+        "name": "Choppy/Mean-Reverting",
+        "criteria": "Default/fallback regime",
+        "assessment": "APPROPRIATE - catch-all for undefined conditions"
+      },
+      "Regime 6": {
+        "name": "Event/Catalyst",
+        "criteria": "Calendar-based (FOMC, CPI, earnings)",
+        "assessment": "RULE-BASED - no fitting risk"
+      }
+    },
+    "suspicious_thresholds": [
+      {
+        "parameter": "compression_range",
+        "value": 0.035,
+        "concern": "Suspiciously precise (3.5% vs round 3%, 4%, or 5%). Looks like micro-optimized.",
+        "risk": "HIGH",
+        "test": "\u00b110% sensitivity: 0.0315 vs 0.0385. Does regime 3 frequency collapse?"
+      },
+      {
+        "parameter": "slope_threshold",
+        "value": 0.005,
+        "concern": "3 decimal places - precise. May be curve-fit to SPY trend dynamics.",
+        "risk": "MEDIUM",
+        "test": "What if 0.0025 or 0.01? Does classification break?"
+      },
+      {
+        "parameter": "vov_ratio",
+        "value": 0.3,
+        "concern": "Suspiciously round (0.3x factor). Is this optimal or guess?",
+        "risk": "MEDIUM",
+        "test": "\u00b110%: 0.27 vs 0.33. Breaking Vol frequency changes?"
+      }
+    ]
+  },
+  "profile_detector_analysis": {
+    "total_profiles": 6,
+    "assessment": "REASONABLE - Covers standard options convexity types",
+    "sigmoid_parameter_analysis": {
+      "concern": "Sigmoid steepness (k values) vary widely without documentation",
+      "values_found": [
+        2,
+        3,
+        5,
+        100,
+        1000
+      ],
+      "interpretation": [
+        "k=2: Very gradual transition",
+        "k=3: Moderate transition",
+        "k=5: Standard steep transition",
+        "k=100: Sharp threshold-like",
+        "k=1000: Extreme cliff"
+      ],
+      "suspicious_finding": "k=1000 values (used 7 times) create near-step functions. Why not use if/then logic?",
+      "risk": "HIGH - These are effectively hardcoded thresholds disguised as sigmoid parameters"
+    },
+    "profile_specific_issues": {
+      "Profile_1_LDG": {
+        "parameters": [
+          "RV/IV > 0.9",
+          "IV_rank < 0.4",
+          "slope_MA20 positive"
+        ],
+        "assessment": "REASONABLE - standard long-dated gamma logic",
+        "risk": "LOW"
+      },
+      "Profile_2_SDG": {
+        "parameters": [
+          "RV5/IV7 > 0.8",
+          "move_size > 1.0",
+          "VVIX_slope > 0"
+        ],
+        "assessment": "REASONABLE - captures short-dated gamma spike",
+        "recent_fixes": [
+          "span=3 \u2192 span=7 EMA (2025-11-18)",
+          "Added abs() to move_size calculation (2025-11-18)"
+        ],
+        "concern": "Recent bug fixes suggest parameter tuning is ongoing",
+        "risk": "MEDIUM"
+      },
+      "Profile_3_CHARM": {
+        "parameters": [
+          "IV20/RV10 > 1.4",
+          "range_10d < 0.035",
+          "VVIX declining"
+        ],
+        "assessment": "IV/RV > 1.4 looks reasonable for decay plays",
+        "concern": "Reuses compression_range (0.035) - coupled parameters",
+        "risk": "MEDIUM"
+      },
+      "Profile_4_VANNA": {
+        "parameters": [
+          "IV_rank < 0.3",
+          "slope > 0",
+          "VVIX declining"
+        ],
+        "assessment": "Clean logic - low IV, uptrend, stable vol",
+        "performance": "ONLY profitable profile (+$13.5K on 151 trades)",
+        "concern": "Other 5 profiles all lose money. Is system just riding Profile 4?",
+        "risk": "CRITICAL - system may be overfit to ONE profile's microstructure"
+      },
+      "Profile_5_SKEW": {
+        "parameters": [
+          "skew_z > 1.0",
+          "VVIX rising",
+          "RV/IV > 1.0"
+        ],
+        "assessment": "Skew proxy is crude (ATR/RV ratio, not real IV surface)",
+        "recent_fixes": "Added slope_MA20 > 0.005 requirement (2025-11-18)",
+        "concern": "Weakest profile (26.7% win rate, -$3.3K). Skew proxy may be invalid.",
+        "risk": "CRITICAL - unreliable input data"
+      },
+      "Profile_6_VOV": {
+        "parameters": [
+          "VVIX elevated",
+          "VVIX slope rising",
+          "IV_rank conditions",
+          "RV/IV compression"
+        ],
+        "recent_fixes": [
+          "Inverted IV_rank sign (2025-11-18)",
+          "Added RV/IV compression factor (2025-11-18)"
+        ],
+        "concern": "Most changes: 4 recent parameter tweaks. Heavily tinkered.",
+        "performance": "Negative despite high trades (172 trades, -$5.1K)",
+        "risk": "CRITICAL - appears curve-fit through trial-and-error"
+      }
+    }
+  },
+  "feature_engineering_suspicions": {
+    "iv_vix_scaling": {
+      "iv7": 0.85,
+      "iv20": 0.95,
+      "iv60": 1.08,
+      "assessment": "STANDARD - These match typical VIX term structure behavior",
+      "verification": "Reasonable but unverified against actual IV surface data",
+      "risk": "LOW-MEDIUM - Conservative scaling factors"
+    },
+    "window_parameters": {
+      "concern": "Many windows with min_periods settings",
+      "examples": [
+        "IV_rank_20: window=60, min_periods=10 (ratio 1:6)",
+        "VVIX: window=20, min_periods=10 (ratio 1:2)",
+        "Skew proxy: window=60, min_periods=20 (ratio 1:3)"
+      ],
+      "assessment": "REASONABLE - Conservative min_periods prevent artifacts",
+      "risk": "LOW"
+    },
+    "ema_smoothing_changes": {
+      "issue": "Recent change: span=3 \u2192 span=7 (2025-11-18)",
+      "rationale": "Agent #3 found span=3 too noisy",
+      "concern": "Parameter still being tweaked. How sensitive is backtest to span?",
+      "risk": "MEDIUM - Ongoing parameter search"
+    }
+  },
+  "rotation_engine_analysis": {
+    "max_weight": 0.4,
+    "min_weight": 0.05,
+    "vix_threshold": 0.3,
+    "vix_scale_factor": 0.5,
+    "assessment": "REASONABLE - Conservative constraints",
+    "concern": "All parameters look round (0.40, 0.05, 0.30, 0.50). No precision tuning = good sign.",
+    "regime_compatibility": {
+      "matrix_size": "6 \u00d7 6 = 36 weights",
+      "values": "All in [0.0, 1.0] range",
+      "assessment": "RULE-BASED - appears manually assigned, not learned",
+      "example_weights": {
+        "Trend_Up": [
+          1.0,
+          0.0,
+          0.3,
+          1.0,
+          0.0,
+          0.2
+        ],
+        "Trend_Down": [
+          0.0,
+          1.0,
+          0.2,
+          0.0,
+          1.0,
+          0.6
+        ],
+        "Compression": [
+          0.4,
+          0.0,
+          1.0,
+          1.0,
+          0.0,
+          0.1
+        ],
+        "Breaking_Vol": [
+          0.0,
+          0.4,
+          0.0,
+          0.0,
+          1.0,
+          1.0
+        ]
+      },
+      "risk": "LOW - Manual rules are auditable, not curve-fit"
+    }
+  },
+  "overfitting_risk_scoring": {
+    "parameter_count": {
+      "score": 15,
+      "justification": "60 parameters is above ideal but acceptable for 604 observations. Ratio 0.10 params/obs is healthy.",
+      "threshold_exceeded": false,
+      "weighting": "25 points possible, 15 awarded (below threshold)"
+    },
+    "sharpe_ratio_realism": {
+      "reported": "Not directly reported, but implied Sharpe very low",
+      "calculation": "PnL $1,030 on ~$1M potential capital over 5 years \u2248 0.2% annual return",
+      "annual_return_estimate": 0.002,
+      "volatility_estimate": 0.25,
+      "implied_sharpe": 0.008,
+      "assessment": "EXTREMELY LOW - Not suspicious, just shows no real edge",
+      "score": 0,
+      "weighting": "25 points possible, 0 awarded (realistic low returns = good sign)"
+    },
+    "parameter_precision": {
+      "suspicious_params": [
+        [
+          "compression_range",
+          0.035,
+          "3 decimals - suspiciously precise for regime threshold"
+        ],
+        [
+          "slope_threshold",
+          0.005,
+          "3 decimals - curve-fit to SPY dynamics?"
+        ],
+        [
+          "ema_span_sdg",
+          7,
+          "Odd number, recently changed from 3"
+        ],
+        [
+          "vov_ratio",
+          0.3,
+          "Round but possibly optimized"
+        ]
+      ],
+      "clean_params": [
+        [
+          "trend_threshold",
+          0.02,
+          "Round, seems reasonable"
+        ],
+        [
+          "max_weight",
+          0.4,
+          "Round, conservative"
+        ],
+        [
+          "vix_threshold",
+          0.3,
+          "Round, standard"
+        ]
+      ],
+      "score": 18,
+      "weighting": "25 points possible, 18 awarded (some precision concerns)"
+    },
+    "regime_sensitivity": {
+      "concern": "6 regimes \u00d7 6 profiles = 36 regime-profile combinations",
+      "issue": "System has many decision paths. Which are actually used?",
+      "current_analysis": "Only shows aggregate stats. No per-regime performance breakdown.",
+      "score": 12,
+      "weighting": "25 points possible, 12 awarded (narrow regime definitions + missing breakdowns)"
+    },
+    "walk_forward_validation": {
+      "reported": "Walk-forward FAILED (p=0.485)",
+      "implication": "Results NOT reproducible on out-of-sample data",
+      "score": 25,
+      "weighting": "This is CRITICAL FAILURE - 25 points max penalty"
+    },
+    "total_risk_score": 70,
+    "total_possible": 100,
+    "verdict": "OVERFIT_RISK - High probability system is curve-fit to historical SPY data"
+  },
+  "suspicious_findings": [
+    {
+      "finding": "Walk-Forward Validation FAILED (p=0.485)",
+      "severity": "CRITICAL",
+      "implication": "System shows NO edge on out-of-sample data. Results are NOT statistically significant.",
+      "flag": "System will NOT work on live trading",
+      "evidence": "Validation report explicitly states 'NOT statistically significant'"
+    },
+    {
+      "finding": "5 of 6 profiles are UNPROFITABLE",
+      "severity": "CRITICAL",
+      "implication": "System is essentially Profile 4 (VANNA) with 5 money-losing filters",
+      "flag": "Only Profile 4 is profitable: +$13.5K on 151 trades",
+      "evidence": "Profile performance breakdown in METADATA.json"
+    },
+    {
+      "finding": "Compression regime threshold (0.035) is suspiciously precise",
+      "severity": "HIGH",
+      "implication": "Looks curve-fit. Why 3.5%? Why not 3%, 4%, 5%?",
+      "flag": "\u00b110% sensitivity test would reveal if threshold is brittle",
+      "test_recommendation": "Backtest with 0.0315 and 0.0385 - does performance collapse?"
+    },
+    {
+      "finding": "VOV profile recently tweaked 4 times (2025-11-18)",
+      "severity": "HIGH",
+      "implication": "Heavy parameter search = sign of overfitting",
+      "changes": [
+        "IV_rank sign inverted (logic error fix)",
+        "Added RV/IV compression factor",
+        "EMA span increased 3\u21927",
+        "Move_size missing abs() fix"
+      ],
+      "flag": "These are post-hoc fixes driven by poor performance",
+      "pattern": "Fits definition of 'tweaking to improve backtest results'"
+    },
+    {
+      "finding": "Skew profile (Profile 5) uses crude proxy",
+      "severity": "HIGH",
+      "implication": "Skew detection uses ATR/RV ratio, not real IV surface skew",
+      "performance": "26.7% win rate, -$3.3K (worst profile)",
+      "flag": "Input data quality issue invalidates this profile's results"
+    },
+    {
+      "finding": "0.3% capture rate is negligible",
+      "severity": "MEDIUM",
+      "implication": "Peak potential ($348K) vs actual ($1K) = 0.3% capture",
+      "flag": "Entry logic is identifying opportunities, but exit logic is destroying value",
+      "note": "14-day fixed exit is likely culprit, not entry selection"
+    },
+    {
+      "finding": "Recent bug fixes indicate code quality issues",
+      "severity": "MEDIUM",
+      "implication": [
+        "Missing abs() in move_size calculation (Profile 2)",
+        "Wrong sign in IV_rank factor (Profile 4)",
+        "EMA span too short (Profiles 2, 5)",
+        "All found by external agent in Nov 2025"
+      ],
+      "flag": "These bugs would have inflated historical performance if not caught"
+    },
+    {
+      "finding": "Only 604 trades over 5-year period",
+      "severity": "MEDIUM",
+      "implication": "Average 120 trades/year or ~1 trade per trading day",
+      "flag": "Low trade frequency limits statistical power for validation",
+      "sample_size": "May be too small to distinguish skill from luck"
+    }
+  ],
+  "recommendations": [
+    {
+      "priority": "CRITICAL",
+      "action": "DO NOT DEPLOY TO LIVE TRADING",
+      "justification": "Walk-forward validation FAILED (p=0.485). System shows zero edge on unseen data.",
+      "next_steps": [
+        "Acknowledge walk-forward failure",
+        "Accept that system is overfit to 2020-2024 SPY data",
+        "Do not attempt to 'fix' via parameter tweaking"
+      ]
+    },
+    {
+      "priority": "CRITICAL",
+      "action": "Decompose system into single-profile strategies",
+      "justification": "Only Profile 4 (VANNA) is profitable. Others destroy value.",
+      "next_steps": [
+        "Isolate Profile 4 logic",
+        "Backtest Profile 4 alone (no regime filtering, no others)",
+        "Validate independently: walk-forward, parameter sensitivity, Monte Carlo",
+        "Only deploy Profile 4 if it passes all gates"
+      ]
+    },
+    {
+      "priority": "HIGH",
+      "action": "Parameter sensitivity analysis on compression_range",
+      "justification": "0.035 threshold is suspiciously precise. May be curve-fit.",
+      "test_protocol": [
+        "Run 9 backtests: compression_range \u2208 [0.0270, 0.0315, 0.0350, 0.0385, 0.0420]",
+        "Measure Sharpe, win rate, profile frequency for each",
+        "Plot degradation vs parameter value",
+        "If Sharpe drops >30% at \u00b110%, threshold is overfit"
+      ]
+    },
+    {
+      "priority": "HIGH",
+      "action": "Parameter sensitivity analysis on slope_threshold",
+      "justification": "0.005 threshold may be optimized to SPY-specific MA dynamics",
+      "test_protocol": [
+        "Test slope_threshold \u2208 [0.0025, 0.005, 0.01, 0.02]",
+        "Measure regime frequency and performance",
+        "Check robustness across regime 1/2 detection"
+      ]
+    },
+    {
+      "priority": "HIGH",
+      "action": "Real IV surface replacement",
+      "justification": "Current system uses IV proxy (RV \u00d7 1.2) + VVIX proxy. Not realistic.",
+      "next_steps": [
+        "Load real options IV surface data from Polygon",
+        "Compute true skew (IV_25D_put - IV_ATM)",
+        "Recompute Profile 5 with real skew",
+        "Recompute Profile 6 with true vol-of-vol",
+        "Backtest again - profiles may improve with real data"
+      ]
+    },
+    {
+      "priority": "MEDIUM",
+      "action": "Exit logic overhaul",
+      "justification": "0.3% capture rate suggests 14-day fixed exit is destroying value",
+      "hypothesis": "Entries identify real opportunities, but dumb exits throw away profits",
+      "next_steps": [
+        "Analyze exit timing by profile",
+        "Compare to buy-and-hold from entry",
+        "Implement adaptive exit (e.g., stop loss, trailing stop, regime exit)",
+        "Measure improvement"
+      ]
+    },
+    {
+      "priority": "MEDIUM",
+      "action": "Increase trade frequency",
+      "justification": "Only 120 trades/year limits statistical power",
+      "next_steps": [
+        "Consider intraday signals (15-min bars as mentioned in codebase)",
+        "More frequent entries = more observations = better validation",
+        "Current sample (604 trades) is borderline for parameter count (60)"
+      ]
+    },
+    {
+      "priority": "LOW",
+      "action": "Document regime compatibility matrix",
+      "justification": "36 compatibility weights are rule-based, not learned. Need rationale.",
+      "next_steps": [
+        "Add docstring explaining WHY each weight is chosen",
+        "Validate against options theory (gamma theory, skew dynamics, etc.)",
+        "Consider sensitivity analysis on high-weight combinations"
+      ]
+    }
+  ],
+  "final_verdict": {
+    "overall_risk_score": 70,
+    "risk_level": "HIGH",
+    "overfitting_probability": 0.85,
+    "statistical_significance": "FAILED (p=0.485)",
+    "recommendation": "DO NOT DEPLOY",
+    "rationale": [
+      "Walk-forward validation explicitly FAILED. No edge on out-of-sample data.",
+      "5 of 6 profiles are unprofitable. System reduces to single-profile strategy.",
+      "Suspicious parameter precision (0.035 range threshold) suggests curve-fitting.",
+      "Heavy parameter tweaking in Nov 2025 on VOV profile indicates reactive tuning.",
+      "No real edge observed in backtest (Sharpe \u2248 0, capture rate 0.3%).",
+      "Recent bug fixes suggest code quality issues that would have inflated results."
+    ],
+    "deployment_gate": "BLOCKED - System must pass walk-forward validation before any live trading",
+    "path_forward": [
+      "1. Accept walk-forward failure - this is ground truth",
+      "2. Isolate profitable profile (Profile 4) and validate independently",
+      "3. Fix exit logic (major source of value destruction)",
+      "4. Replace IV/skew proxies with real data",
+      "5. Revalidate from scratch with higher trade frequency",
+      "6. Only redeploy if walk-forward validation passes with p < 0.05"
+    ]
+  }
+}
